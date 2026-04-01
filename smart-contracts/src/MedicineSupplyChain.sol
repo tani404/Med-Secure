@@ -1,127 +1,291 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-contract MedicineSupplyChain {
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
-    enum Role { None, Manufacturer, Distributor, Pharmacy }
-    enum Status { Manufactured, InTransit, ForSale, Sold }
+/**
+ * @title MedSecure
+ * @notice Blockchain-based pharmaceutical supply chain verification system
+ * @dev Tracks medicine units from manufacturer → distributor → pharmacy → consumer
+ */
+contract MedicineSupplyChain is Ownable, ReentrancyGuard, Pausable {
+    error InvalidManufacturer();
+    error CallerIsNotManufacturer();
+    error CallerIsNotDistributor();
+    error CallerIsNotPharmacy();
+    error InvalidBatchId();
+    error InvalidDrugName();
+    error InvalidIPFSHash();
+    error InvalidExpiryDate();
+    error InvalidManufacturingDate();
+    error InvalidStatus();
+    error InvalidAddress();
 
-    struct Batch {
-        string batchId;
-        string ipfsHash;
-        address manufacturer;
+    enum Status {
+        Manufactured,
+        SentToDistributor,
+        SentToPharmacy,
+        Sold
+    }
+
+    struct MedicineUnit { 
+        uint256 batchId;
+        string  drugName;
+        string  ipfsHash;
+        address distributor;
+        address pharmacy;
         address currentOwner;
+        uint256 manufacturingDate;
         uint256 expiryDate;
-        Status status;
-        bool exists;
+        Status  status;
     }
 
-    mapping(string => Batch) private batches;
-    mapping(address => Role) public roles;
-
-    address public admin;
-
-    event BatchRegistered(string batchId, address manufacturer);
-    event OwnershipTransferred(string batchId, address from, address to);
-    event MedicineVerified(string batchId, address verifier);
-
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Not admin");
-        _;
+    struct TransferEvent {
+        address from;
+        address to;
+        Status  status;
+        uint256 timestamp;
     }
+
+    address private manufacturer;
+    mapping(uint256  => MedicineUnit)      private units;
+    mapping(uint256  => TransferEvent[])   private unitHistory;
+
+    uint256[] private allBatchIds;
+
+    event UnitManufactured(
+        uint256  indexed batchId,
+        string          drugName,
+        address indexed manufacturer,
+        string          ipfsHash,
+        uint256         expiryDate,
+        uint256         timestamp
+    );
+    event TransferredToDistributor(
+        uint256  indexed batchId,
+        address indexed from,
+        address indexed distributor,
+        uint256         timestamp
+    );
+    event TransferredToPharmacy(
+        uint256  indexed batchId,
+        address indexed from,
+        address indexed pharmacy,
+        uint256         timestamp
+    );
+
+    event UnitSold(
+        uint256  indexed batchId,
+        address indexed pharmacy,
+        uint256         timestamp
+    );
 
     modifier onlyManufacturer() {
-        require(roles[msg.sender] == Role.Manufacturer, "Not manufacturer");
+        if(msg.sender != manufacturer){
+            revert CallerIsNotManufacturer();
+        }
+        _;
+    }
+    modifier onlyDistributor(uint256 _batchId) {
+        if(msg.sender != units[_batchId].distributor){
+            revert CallerIsNotDistributor();
+        }
+        _;
+    }
+    modifier onlyPharmacy(uint256 _batchId) {
+        if(msg.sender != units[_batchId].pharmacy){
+            revert CallerIsNotPharmacy();
+        }
         _;
     }
 
-    modifier batchExists(string memory batchId) {
-        require(batches[batchId].exists, "Batch does not exist");
-        _;
+    constructor() Ownable(msg.sender) {
+        manufacturer = msg.sender;
     }
 
-    constructor() {
-        admin = msg.sender;
-    }
+    function pause() external onlyOwner { _pause(); }
+    function unpause() external onlyOwner { _unpause(); }
 
-    function assignRole(address user, Role role) external onlyAdmin {
-        roles[user] = role;
-    }
+    function manufactureUnit(
+        uint256 _batchId,
+        string memory _drugName,
+        uint256 _manufacturingDate,
+        uint256 _expiryDate,
+        string memory _ipfsHash
+    ) external whenNotPaused {
+        if(msg.sender != manufacturer){
+            revert InvalidManufacturer();
+        }
 
-    function registerBatch(
-        string calldata batchId,
-        string calldata ipfsHash,
-        uint256 expiryDate
-    ) external onlyManufacturer {
+        if(_batchId <= 0){
+            revert InvalidBatchId();
+        }           
+        if(bytes(_drugName).length <= 0){
+            revert InvalidDrugName();
+        }          
+        if(bytes(_ipfsHash).length <= 0){
+            revert InvalidIPFSHash();
+        }
+        if(_expiryDate <= block.timestamp){
+            revert InvalidExpiryDate();
+        }        
+        if(_manufacturingDate > block.timestamp){
+            revert InvalidManufacturingDate();
+        }
 
-        require(!batches[batchId].exists, "Batch already exists");
-
-        batches[batchId] = Batch({
-            batchId: batchId,
-            ipfsHash: ipfsHash,
-            manufacturer: msg.sender,
-            currentOwner: msg.sender,
-            expiryDate: expiryDate,
-            status: Status.Manufactured,
-            exists: true
+        units[_batchId] = MedicineUnit({
+            batchId:           _batchId,
+            drugName:          _drugName,
+            ipfsHash:          _ipfsHash,
+            distributor:       address(0),
+            pharmacy:          address(0),
+            currentOwner:      msg.sender,
+            manufacturingDate: _manufacturingDate,
+            expiryDate:        _expiryDate,
+            status:            Status.Manufactured
         });
 
-        emit BatchRegistered(batchId, msg.sender);
+        allBatchIds.push(_batchId);
+
+        unitHistory[_batchId].push(TransferEvent({
+            from:      address(0),
+            to:        manufacturer,
+            status:    Status.Manufactured,
+            timestamp: block.timestamp
+        }));
+
+        emit UnitManufactured(_batchId, _drugName, manufacturer, _ipfsHash, _expiryDate, block.timestamp);
     }
 
-    function transferOwnership(
-        string calldata batchId,
-        address newOwner
-    ) external batchExists(batchId) {
+    function transferToDistributor(
+        uint256 _batchId,
+        address _distributor
+    ) external onlyManufacturer() nonReentrant whenNotPaused {
+        if(units[_batchId].status != Status.Manufactured){
+            revert InvalidStatus();
+        }
 
-        Batch storage batch = batches[batchId];
-        require(msg.sender == batch.currentOwner, "Not current owner");
+        if(address(_distributor) == address(0)){
+            revert InvalidAddress();
+        }
 
-        batch.currentOwner = newOwner;
-        batch.status = Status.InTransit;
+        units[_batchId].currentOwner = _distributor;
+        units[_batchId].distributor  = _distributor;
+        units[_batchId].status       = Status.SentToDistributor;
 
-        emit OwnershipTransferred(batchId, msg.sender, newOwner);
+        unitHistory[_batchId].push(TransferEvent({
+            from:      msg.sender,
+            to:        _distributor,
+            status:    Status.SentToDistributor,
+            timestamp: block.timestamp
+        }));
+
+        emit TransferredToDistributor(_batchId, msg.sender, _distributor, block.timestamp);
     }
 
-    function markForSale(string calldata batchId)
-        external
-        batchExists(batchId)
+    function transferToPharmacy(
+        uint256 _batchId,
+        address _pharmacy
+    ) external onlyDistributor(_batchId) nonReentrant whenNotPaused {
+        if(address(_pharmacy) == address(0)){
+            revert InvalidAddress();
+        }
+
+        if (msg.sender != units[_batchId].currentOwner) {
+            revert CallerIsNotDistributor();
+        }
+        
+        if(units[_batchId].status != Status.SentToDistributor){
+            revert InvalidStatus();
+        }
+
+        units[_batchId].currentOwner = _pharmacy;
+        units[_batchId].pharmacy     = _pharmacy;
+        units[_batchId].status       = Status.SentToPharmacy;
+
+        unitHistory[_batchId].push(TransferEvent({
+            from:      msg.sender,
+            to:        _pharmacy,
+            status:    Status.SentToPharmacy,
+            timestamp: block.timestamp
+        }));
+
+        emit TransferredToPharmacy(_batchId, msg.sender, _pharmacy, block.timestamp);
+    }
+
+    function markAsSold(uint256 _batchId)
+        external onlyPharmacy(_batchId) nonReentrant whenNotPaused
     {
-        Batch storage batch = batches[batchId];
-        require(msg.sender == batch.currentOwner, "Not owner");
-        batch.status = Status.ForSale;
+
+        units[_batchId].status = Status.Sold;
+
+        unitHistory[_batchId].push(TransferEvent({
+            from:      msg.sender,
+            to:        address(0),
+            status:    Status.Sold,
+            timestamp: block.timestamp
+        }));
+
+        emit UnitSold(_batchId, msg.sender, block.timestamp);
     }
 
-    function verifyMedicine(string calldata batchId)
-        external
-        view
-        batchExists(batchId)
+    /**getters */
+
+    function verifyUnit(uint256 _batchId)
+        external view
         returns (
-            bool valid,
-            address currentOwner,
-            uint256 expiryDate,
-            string memory ipfsHash
+            string  memory drugName,
+            uint256        expiryDate,
+            string  memory ipfsHash,
+            address        currentOwner,
+            Status         status,
+            bool           isExpired,
+            bool           isAlreadySold,
+            bool           isAuthentic
         )
     {
-        Batch memory batch = batches[batchId];
+        MedicineUnit storage u = units[_batchId];
 
-        bool notExpired = block.timestamp < batch.expiryDate;
-        bool notSold = batch.status != Status.Sold;
+        if (u.manufacturingDate == 0) {
+            return ("", 0, "", address(0), Status.Manufactured, false, false, false);
+        }
 
+        bool expired = block.timestamp > u.expiryDate;
+        bool sold    = u.status == Status.Sold;
         return (
-            batch.exists && notExpired && notSold,
-            batch.currentOwner,
-            batch.expiryDate,
-            batch.ipfsHash
+            u.drugName,
+            u.expiryDate,
+            u.ipfsHash,
+            u.currentOwner,
+            u.status,
+            expired,
+            sold,
+            !expired && !sold 
         );
     }
 
-    function markAsSold(string calldata batchId)
-        external
-        batchExists(batchId)
+    function getUnit(uint256 _batchId)
+        external view 
+        returns (MedicineUnit memory)
     {
-        Batch storage batch = batches[batchId];
-        require(msg.sender == batch.currentOwner, "Not owner");
-        batch.status = Status.Sold;
+        return units[_batchId];
+    }
+
+    function getUnitHistory(uint256 _batchId)
+        external view 
+        returns (TransferEvent[] memory)
+    {
+        return unitHistory[_batchId];
+    }
+
+
+    function totalUnits() external view returns (uint256) {
+        return allBatchIds.length;
+    }
+
+    function getAllBatchIds() external view returns (uint256[] memory) {
+        return allBatchIds;
     }
 }
