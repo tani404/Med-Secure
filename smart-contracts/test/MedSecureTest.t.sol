@@ -216,13 +216,8 @@ contract MedSecureTest is Test {
 
     function test_TransferToDistributor_NonExistentUnit() public {
         vm.prank(manufacturer);
-        // The function will actually succeed because status is 0 (Manufactured)
-        // So we need to check that it doesn't modify anything
+        vm.expectRevert(MedicineSupplyChain.BatchNotFound.selector);
         medSecure.transferToDistributor(BATCH_ID, distributor1);
-        
-        // Verify unit wasn't actually created
-        (,,,,, bool isExpired,,) = medSecure.verifyUnit(BATCH_ID);
-        assertFalse(isExpired); // manufacturingDate is 0, so verifyUnit returns false for isExpired
     }
 
     // ==================== TRANSFER TO PHARMACY TESTS ====================

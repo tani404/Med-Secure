@@ -20,3 +20,10 @@ export const toDate = (seconds: bigint | number) => {
   const sec = typeof seconds === "bigint" ? Number(seconds) : seconds;
   return new Date(sec * 1000).toLocaleDateString();
 };
+
+export const dateInputToUnix = (value: string) => {
+  if (!value) return 0n;
+  const ms = Date.parse(`${value}T00:00:00Z`);
+  if (Number.isNaN(ms)) return 0n;
+  return BigInt(Math.floor(ms / 1000));
+};

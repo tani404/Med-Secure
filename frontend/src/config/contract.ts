@@ -1,5 +1,10 @@
 export const CONTRACT_ADDRESS = "0x6E20534957053a52237501Dc752e62C060bECD6A" as const;
 
+/**
+ * Full ABI for MedicineSupplyChain + common OpenZeppelin reverts (Ownable, Pausable).
+ * Custom errors must be listed so viem can decode revert data (e.g. 0x7c78338b → InvalidManufacturingDate).
+ * Source: smart-contracts/src/MedicineSupplyChain.sol
+ */
 export const medicineSupplyChainAbi = [
   { type: "function", name: "getAllBatchIds", inputs: [], outputs: [{ type: "uint256[]" }], stateMutability: "view" },
   {
@@ -95,6 +100,25 @@ export const medicineSupplyChainAbi = [
       { name: "isAuthentic", type: "bool" }
     ],
     stateMutability: "view"
+  },
+  { type: "error", name: "InvalidManufacturer", inputs: [] },
+  { type: "error", name: "CallerIsNotManufacturer", inputs: [] },
+  { type: "error", name: "CallerIsNotDistributor", inputs: [] },
+  { type: "error", name: "CallerIsNotPharmacy", inputs: [] },
+  { type: "error", name: "InvalidBatchId", inputs: [] },
+  { type: "error", name: "InvalidDrugName", inputs: [] },
+  { type: "error", name: "InvalidIPFSHash", inputs: [] },
+  { type: "error", name: "InvalidExpiryDate", inputs: [] },
+  { type: "error", name: "InvalidManufacturingDate", inputs: [] },
+  { type: "error", name: "InvalidStatus", inputs: [] },
+  { type: "error", name: "InvalidAddress", inputs: [] },
+  { type: "error", name: "BatchAlreadyExists", inputs: [] },
+  { type: "error", name: "BatchNotFound", inputs: [] },
+  { type: "error", name: "EnforcedPause", inputs: [] },
+  {
+    type: "error",
+    name: "OwnableUnauthorizedAccount",
+    inputs: [{ name: "account", type: "address" }]
   }
 ] as const;
 

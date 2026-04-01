@@ -22,6 +22,8 @@ contract MedicineSupplyChain is Ownable, ReentrancyGuard, Pausable {
     error InvalidManufacturingDate();
     error InvalidStatus();
     error InvalidAddress();
+    error BatchAlreadyExists();
+    error BatchNotFound();
 
     enum Status {
         Manufactured,
@@ -121,7 +123,10 @@ contract MedicineSupplyChain is Ownable, ReentrancyGuard, Pausable {
 
         if(_batchId <= 0){
             revert InvalidBatchId();
-        }           
+        }
+        if(units[_batchId].manufacturingDate != 0){
+            revert BatchAlreadyExists();
+        }
         if(bytes(_drugName).length <= 0){
             revert InvalidDrugName();
         }          
@@ -163,6 +168,9 @@ contract MedicineSupplyChain is Ownable, ReentrancyGuard, Pausable {
         uint256 _batchId,
         address _distributor
     ) external onlyManufacturer() nonReentrant whenNotPaused {
+        if(units[_batchId].manufacturingDate == 0){
+            revert BatchNotFound();
+        }
         if(units[_batchId].status != Status.Manufactured){
             revert InvalidStatus();
         }
@@ -189,6 +197,9 @@ contract MedicineSupplyChain is Ownable, ReentrancyGuard, Pausable {
         uint256 _batchId,
         address _pharmacy
     ) external onlyDistributor(_batchId) nonReentrant whenNotPaused {
+        if(units[_batchId].manufacturingDate == 0){
+            revert BatchNotFound();
+        }
         if(address(_pharmacy) == address(0)){
             revert InvalidAddress();
         }
@@ -218,6 +229,12 @@ contract MedicineSupplyChain is Ownable, ReentrancyGuard, Pausable {
     function markAsSold(uint256 _batchId)
         external onlyPharmacy(_batchId) nonReentrant whenNotPaused
     {
+        if(units[_batchId].manufacturingDate == 0){
+            revert BatchNotFound();
+        }
+        if(units[_batchId].status != Status.SentToPharmacy){
+            revert InvalidStatus();
+        }
 
         units[_batchId].status = Status.Sold;
 
