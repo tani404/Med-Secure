@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/lib.ts","./src/main.tsx","./src/viem-shim.d.ts","./src/vite-env.d.ts","./src/components/layout.tsx","./src/config/contract.ts","./src/config/wagmi.ts","./src/pages/pages.tsx"],"version":"5.9.3"}
