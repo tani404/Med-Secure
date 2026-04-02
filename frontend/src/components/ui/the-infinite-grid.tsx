@@ -54,7 +54,7 @@ export const InfiniteGrid = ({
       className={cn("relative overflow-hidden", className)}
     >
       {/* Base grid — subtle always-on */}
-      <div className="absolute inset-0 z-0 opacity-[0.06]">
+      <div className="absolute inset-0 z-0 opacity-[0.18]">
         <GridPattern id="grid-base" offsetX={gridOffsetX} offsetY={gridOffsetY} />
       </div>
 
@@ -97,7 +97,7 @@ const GridPattern = ({
         x={offsetX}
         y={offsetY}
       >
-        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1" className="text-primary/50" />
+        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1" className="text-slate-400" />
       </motion.pattern>
     </defs>
     <rect width="100%" height="100%" fill={`url(#${id})`} />

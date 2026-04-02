@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { motion, type Variants } from "framer-motion";
+import { ReactNode, useRef } from "react";
+import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 
 /* ── Shared easing ── */
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -16,10 +16,10 @@ interface RevealProps {
 }
 
 const directionOffset = {
-  up: { y: 40 },
-  down: { y: -40 },
-  left: { x: 40 },
-  right: { x: -40 },
+  up: { y: 50 },
+  down: { y: -50 },
+  left: { x: 50 },
+  right: { x: -50 },
   none: {},
 };
 
@@ -64,8 +64,8 @@ const staggerContainer: Variants = {
 };
 
 const staggerChild: Variants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease } },
+  hidden: { opacity: 0, y: 40, scale: 0.97 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.7, ease } },
 };
 
 export function StaggerList({ children, className, stagger = 0.1, delay = 0 }: StaggerProps) {
@@ -164,6 +164,53 @@ export function HoverLift({ children, className }: { children: ReactNode; classN
     <motion.div
       className={className}
       whileHover={{ y: -4, transition: { type: "spring", stiffness: 300, damping: 20 } }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* ═══════════════ Scroll-linked parallax float ═══════════════ */
+
+interface ParallaxProps {
+  children: ReactNode;
+  className?: string;
+  speed?: number; // positive = moves up on scroll, negative = moves down
+  direction?: "vertical" | "horizontal";
+}
+
+export function ParallaxFloat({ children, className, speed = 0.15, direction = "vertical" }: ParallaxProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const range = 80 * speed;
+  const y = useTransform(scrollYProgress, [0, 1], [range, -range]);
+  const x = useTransform(scrollYProgress, [0, 1], [range, -range]);
+
+  return (
+    <motion.div ref={ref} className={className} style={direction === "vertical" ? { y } : { x }}>
+      {children}
+    </motion.div>
+  );
+}
+
+/* ═══════════════ Counter animation on scroll ═══════════════ */
+
+export function CountUp({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, margin: "-30px" }}
+      transition={{ duration: 0.5, delay, ease }}
     >
       {children}
     </motion.div>

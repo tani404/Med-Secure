@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="240" viewBox="0 0 400 240">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0f0f0"/>
+      <stop offset="100%" style="stop-color:#e0e0e0"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="240" fill="url(#bg)" rx="12"/>
+  <!-- Factory building -->
+  <rect x="60" y="80" width="120" height="120" fill="#333" rx="4"/>
+  <rect x="70" y="95" width="25" height="30" fill="#f0f0f0" rx="2"/>
+  <rect x="105" y="95" width="25" height="30" fill="#f0f0f0" rx="2"/>
+  <rect x="140" y="95" width="25" height="30" fill="#f0f0f0" rx="2"/>
+  <rect x="70" y="140" width="25" height="30" fill="#f0f0f0" rx="2"/>
+  <rect x="105" y="140" width="25" height="30" fill="#f0f0f0" rx="2"/>
+  <rect x="140" y="140" width="25" height="30" fill="#f0f0f0" rx="2"/>
+  <!-- Chimney -->
+  <rect x="80" y="50" width="20" height="30" fill="#444"/>
+  <rect x="130" y="60" width="20" height="20" fill="#444"/>
+  <!-- Smoke -->
+  <circle cx="90" cy="42" r="8" fill="#999" opacity="0.5"/>
+  <circle cx="85" cy="30" r="10" fill="#999" opacity="0.3"/>
+  <circle cx="92" cy="20" r="7" fill="#999" opacity="0.2"/>
+  <!-- Conveyor / production line -->
+  <rect x="200" y="160" width="150" height="8" fill="#555" rx="4"/>
+  <rect x="210" y="140" width="20" height="20" fill="#777" rx="2"/>
+  <rect x="250" y="140" width="20" height="20" fill="#777" rx="2"/>
+  <rect x="290" y="140" width="20" height="20" fill="#777" rx="2"/>
+  <!-- Pill bottles on conveyor -->
+  <rect x="213" y="125" width="14" height="15" fill="#888" rx="3"/>
+  <rect x="253" y="125" width="14" height="15" fill="#888" rx="3"/>
+  <rect x="293" y="125" width="14" height="15" fill="#888" rx="3"/>
+  <!-- Machine arm -->
+  <rect x="320" y="90" width="8" height="50" fill="#444"/>
+  <rect x="300" y="85" width="40" height="10" fill="#555" rx="3"/>
+  <circle cx="300" cy="90" r="5" fill="#666"/>
+</svg>

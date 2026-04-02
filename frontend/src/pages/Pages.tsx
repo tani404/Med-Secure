@@ -13,7 +13,7 @@ import {
 import { CONTRACT_ADDRESS, medicineSupplyChainAbi, ZERO_ADDRESS } from "../config/contract";
 import { dateInputToUnix, shortAddress, statusText, toDate } from "../lib";
 import { InfiniteGrid } from "@/components/ui/the-infinite-grid";
-import { Reveal, StaggerList, StaggerItem, ScaleIn, HoverLift } from "@/components/ui/motion";
+import { Reveal, StaggerList, StaggerItem, ScaleIn, HoverLift, ParallaxFloat, CountUp } from "@/components/ui/motion";
 import { motion } from "framer-motion";
 
 /* ── Shared Types ── */
@@ -217,41 +217,41 @@ export function LandingPage() {
 
           <div className="relative z-10 max-w-[760px] mx-auto flex flex-col items-center text-center">
             {/* Live badge */}
-            <div className="badge badge-live mb-8 gap-2">
+            <motion.div className="badge badge-live mb-8 gap-2" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}>
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
               </span>
               Live on Ethereum Sepolia
-            </div>
+            </motion.div>
 
-            <h1 className="text-balance">
+            <motion.h1 className="text-balance" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}>
               Securing the global pharmaceutical supply chain with{" "}
               <span className="text-primary italic">MedSecure</span> Ledger.
-            </h1>
+            </motion.h1>
 
-            <p className="mt-6 text-base sm:text-[16px] max-w-[520px]">
+            <motion.p className="mt-6 text-base sm:text-[16px] max-w-[520px]" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}>
               An immutable protocol designed for manufacturers, distributors, and pharmacists to verify authenticity in real-time.
-            </p>
+            </motion.p>
 
-            <div className="flex flex-wrap justify-center gap-4 mt-10">
+            <motion.div className="flex flex-wrap justify-center gap-4 mt-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.8, ease: [0.22, 1, 0.36, 1] }}>
               <Link to="/verify" className="btn btn-primary">Verify a Medicine</Link>
               <Link to="/portal" className="btn btn-outline">Browse Batches</Link>
-            </div>
+            </motion.div>
 
             {/* Stats strip */}
-            <div className="flex flex-wrap justify-center gap-12 md:gap-24 py-8 border-t border-slate-200/50 w-full max-w-2xl mt-16">
+            <motion.div className="flex flex-wrap justify-center gap-12 md:gap-24 py-8 border-t border-slate-200/50 w-full max-w-2xl mt-16" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 1, ease: [0.22, 1, 0.36, 1] }}>
               {[["4", "Roles"], ["100%", "On-chain"], ["IPFS", "Documents"], ["0", "Trust needed"]].map(([val, label]) => (
                 <div key={label} className="flex flex-col items-center">
                   <span className="text-2xl font-semibold font-label text-on-background">{val}</span>
                   <span className="text-[11px] text-slate-400 font-label uppercase tracking-widest">{label}</span>
                 </div>
               ))}
-            </div>
+            </motion.div>
           </div>
 
           {/* Contract info bar — floating at bottom of hero */}
-          <div className="relative z-10 w-full max-w-4xl mx-auto mt-12">
+          <motion.div className="relative z-10 w-full max-w-4xl mx-auto mt-12" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 1.2, ease: [0.22, 1, 0.36, 1] }}>
             <div className="bg-white/80 backdrop-blur-md p-5 rounded-xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-4 border border-outline-variant/10">
               <div className="flex items-center gap-3">
                 <span className="relative flex h-3 w-3">
@@ -262,7 +262,7 @@ export function LandingPage() {
                 <code className="font-label text-[13px] text-primary bg-surface-c-low px-3 py-1 rounded-lg select-all">{CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)}</code>
               </div>
             </div>
-          </div>
+          </motion.div>
         </InfiniteGrid>
       </div>
 
@@ -276,14 +276,17 @@ export function LandingPage() {
         </Reveal>
         <StaggerList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" stagger={0.12}>
           {([
-            ["factory", "createBatch()", "Manufacturing", "The origin point where medicine details are hashed and stored on-chain."],
-            ["local_shipping", "transferToDistributor()", "Logistics", "Real-time custody transfers recorded through cryptographically signed events."],
-            ["medical_services", "transferToPharmacy()", "Pharmacy Receipt", "Local pharmacies confirm batch authenticity before stocking items."],
-            ["qr_code_scanner", "markAsSold()", "Patient Verification", "End users verify their specific unit's history via batch ID or QR tags."]
-          ] as const).map(([icon, badge, title, desc]) => (
+            ["factory", "createBatch()", "Manufacturing", "The origin point where medicine details are hashed and stored on-chain.", "/images/manufacturing.svg"],
+            ["local_shipping", "transferToDistributor()", "Logistics", "Real-time custody transfers recorded through cryptographically signed events.", "/images/logistics.svg"],
+            ["medical_services", "verifyInventory()", "Pharmacy Receipt", "Local pharmacies confirm batch authenticity before stocking items.", "/images/pharmacy.svg"],
+            ["qr_code_scanner", "consumerAudit()", "Patient Scan", "End users verify their specific unit's history via secure NFC or QR tags.", "/images/patient-scan.svg"]
+          ] as const).map(([icon, badge, title, desc, img]) => (
             <StaggerItem key={title}>
               <HoverLift className="step-card h-full">
-                <div className="step-icon mb-6">
+                <div className="rounded-lg overflow-hidden mb-5 -mx-2 -mt-2">
+                  <img src={img} alt={title} className="w-full h-40 object-cover" />
+                </div>
+                <div className="step-icon mb-4">
                   <Icon name={icon} />
                 </div>
                 <span className="step-badge mb-4">{badge}</span>
@@ -294,6 +297,32 @@ export function LandingPage() {
           ))}
         </StaggerList>
       </section>
+
+      {/* Divider slogan between sections */}
+      <div className="text-center py-8">
+        <Reveal delay={0}>
+          <p className="font-label text-xs uppercase tracking-[0.3em] text-primary/60 mb-3">Built for trust</p>
+        </Reveal>
+        <ParallaxFloat speed={0.08}>
+          <Reveal delay={0.1}>
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl italic text-slate-800 leading-tight">
+              Every pill has a <span className="text-primary">provable</span> past.
+            </h2>
+          </Reveal>
+        </ParallaxFloat>
+        <Reveal delay={0.2}>
+          <p className="text-slate-400 mt-4 max-w-xl mx-auto text-base font-body leading-relaxed">
+            From factory floor to patient hands — cryptographic certainty at every step.
+          </p>
+        </Reveal>
+        <Reveal delay={0.3}>
+          <div className="mt-8 flex items-center justify-center gap-3">
+            <span className="h-px w-16 bg-gradient-to-r from-transparent to-primary/30" />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary/40" />
+            <span className="h-px w-16 bg-gradient-to-l from-transparent to-primary/30" />
+          </div>
+        </Reveal>
+      </div>
 
       {/* Feature cards — staggered reveal with gradient border */}
       <StaggerList className="grid grid-cols-1 lg:grid-cols-3 gap-8" stagger={0.15}>
@@ -316,20 +345,211 @@ export function LandingPage() {
         ))}
       </StaggerList>
 
+      {/* Visual banner between features and CTA */}
+      <div className="relative py-4">
+        <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-20">
+          {/* Left — Luxury animated network illustration */}
+          <ParallaxFloat speed={0.06} className="flex-1 flex justify-center relative">
+            {/* Ambient CSS glows behind SVG */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 bg-primary/[0.04] rounded-full blur-[60px] pointer-events-none" />
+            <div className="absolute top-1/4 left-1/3 w-32 h-32 bg-blue-300/[0.06] rounded-full blur-[40px] pointer-events-none" />
+            <div className="absolute bottom-1/4 right-1/3 w-28 h-28 bg-green-300/[0.05] rounded-full blur-[40px] pointer-events-none" />
+
+            {/* Use exact pixel positioning via SVG viewBox for perfect hexagon alignment */}
+            <div className="relative w-full max-w-[460px] aspect-square">
+              {/* ── Orbit rings ── */}
+              <motion.div className="absolute inset-0 flex items-center justify-center" initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ duration: 1 }} viewport={{ once: true }}>
+                <div className="absolute w-[94%] h-[94%] rounded-full border border-slate-200/60" />
+                <div className="absolute w-[68%] h-[68%] rounded-full border border-slate-200/50" />
+                <div className="absolute w-[40%] h-[40%] rounded-full border border-slate-200/40" />
+              </motion.div>
+
+              {/* ── Connection lines (SVG overlay, hexagon coords) ── */}
+              {/* Hex vertices (center 230,230): T(230,68) TL(98,149) TR(362,149) BL(98,311) BR(362,311) B(230,392) */}
+              <svg viewBox="0 0 460 460" className="absolute inset-0 w-full h-full" fill="none">
+                <defs>
+                  <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#004ac6" stopOpacity="0.18" /><stop offset="100%" stopColor="#004ac6" stopOpacity="0.04" /></linearGradient>
+                  <linearGradient id="lg2" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#006e2d" stopOpacity="0.15" /><stop offset="100%" stopColor="#006e2d" stopOpacity="0.03" /></linearGradient>
+                </defs>
+                {/* Outer hex edges */}
+                <motion.path d="M98 149 L230 68" stroke="url(#lg1)" strokeWidth="1.5" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.2 }} viewport={{ once: true }} />
+                <motion.path d="M230 68 L362 149" stroke="url(#lg1)" strokeWidth="1.5" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.3 }} viewport={{ once: true }} />
+                <motion.path d="M362 149 L362 311" stroke="url(#lg1)" strokeWidth="1.5" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 1.2, delay: 0.4 }} viewport={{ once: true }} />
+                <motion.path d="M98 149 L98 311" stroke="url(#lg1)" strokeWidth="1.5" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 1.2, delay: 0.4 }} viewport={{ once: true }} />
+                <motion.path d="M98 311 L230 392" stroke="url(#lg1)" strokeWidth="1.5" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.6 }} viewport={{ once: true }} />
+                <motion.path d="M362 311 L230 392" stroke="url(#lg1)" strokeWidth="1.5" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.6 }} viewport={{ once: true }} />
+                {/* Inner spokes to center */}
+                <motion.path d="M98 149 L230 230" stroke="#94a3b8" strokeWidth="0.8" strokeOpacity="0.2" strokeDasharray="4 6" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 0.7, delay: 0.9 }} viewport={{ once: true }} />
+                <motion.path d="M230 68 L230 230" stroke="#94a3b8" strokeWidth="0.8" strokeOpacity="0.2" strokeDasharray="4 6" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 0.7, delay: 1 }} viewport={{ once: true }} />
+                <motion.path d="M362 149 L230 230" stroke="#94a3b8" strokeWidth="0.8" strokeOpacity="0.2" strokeDasharray="4 6" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 0.7, delay: 1.1 }} viewport={{ once: true }} />
+                <motion.path d="M98 311 L230 230" stroke="#94a3b8" strokeWidth="0.8" strokeOpacity="0.2" strokeDasharray="4 6" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 0.7, delay: 1.2 }} viewport={{ once: true }} />
+                <motion.path d="M362 311 L230 230" stroke="#94a3b8" strokeWidth="0.8" strokeOpacity="0.2" strokeDasharray="4 6" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 0.7, delay: 1.3 }} viewport={{ once: true }} />
+                <motion.path d="M230 392 L230 230" stroke="url(#lg2)" strokeWidth="0.8" strokeDasharray="4 6" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} transition={{ duration: 0.7, delay: 1.4 }} viewport={{ once: true }} />
+
+                {/* Travelling data dots */}
+                <motion.circle r="3.5" fill="#004ac6" animate={{ cx: [98, 164, 230], cy: [149, 108, 68], opacity: [0, 0.5, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 2 }} />
+                <motion.circle r="3.5" fill="#004ac6" animate={{ cx: [230, 296, 362], cy: [68, 108, 149], opacity: [0, 0.5, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 3 }} />
+                <motion.circle r="3.5" fill="#004ac6" animate={{ cx: [362, 362, 362], cy: [149, 230, 311], opacity: [0, 0.5, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 3.5 }} />
+                <motion.circle r="3.5" fill="#004ac6" animate={{ cx: [98, 98, 98], cy: [149, 230, 311], opacity: [0, 0.5, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 2.5 }} />
+                <motion.circle r="3" fill="#006e2d" animate={{ cx: [362, 296, 230], cy: [311, 352, 392], opacity: [0, 0.45, 0] }} transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 4 }} />
+                <motion.circle r="3" fill="#006e2d" animate={{ cx: [98, 164, 230], cy: [311, 352, 392], opacity: [0, 0.45, 0] }} transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 4.5 }} />
+              </svg>
+
+              {/* ── CENTER HUB — absolute center at (230, 230) ── */}
+              <motion.div className="absolute z-10 w-20 h-20" style={{ top: "calc(50% - 40px)", left: "calc(50% - 40px)" }} initial={{ scale: 0, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} transition={{ delay: 0.8, type: "spring", stiffness: 180, damping: 14 }} viewport={{ once: true }}>
+                <motion.div className="absolute -inset-5 rounded-full border border-primary/10" animate={{ scale: [1, 1.6], opacity: [0.3, 0] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }} />
+                <motion.div className="absolute -inset-5 rounded-full border border-primary/10" animate={{ scale: [1, 1.9], opacity: [0.2, 0] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut", delay: 0.8 }} />
+                <div className="w-20 h-20 rounded-2xl bg-white shadow-[0_8px_32px_rgba(0,74,198,0.12),0_2px_8px_rgba(0,74,198,0.06)] flex items-center justify-center border border-primary/10">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/[0.08] to-primary/[0.02] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-primary" style={{ fontSize: 32 }}>hub</span>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Nodes use calc() with exact hex vertex coordinates, offset by half node size (32px) */}
+
+              {/* ── NODE: Manufacturing (top-left vertex: 98, 149) ── */}
+              <motion.div className="absolute z-10" style={{ top: "calc(32.4% - 32px)", left: "calc(21.3% - 32px)" }} initial={{ scale: 0, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} transition={{ delay: 0.15, type: "spring", stiffness: 150, damping: 13 }} viewport={{ once: true }}>
+                <div className="relative group">
+                  <div className="w-16 h-16 rounded-full bg-white shadow-[0_4px_20px_rgba(0,74,198,0.1)] flex items-center justify-center border border-primary/10 transition-shadow group-hover:shadow-[0_6px_28px_rgba(0,74,198,0.18)]">
+                    <span className="material-symbols-outlined text-primary" style={{ fontSize: 26 }}>factory</span>
+                  </div>
+                  <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-label font-semibold text-slate-400 whitespace-nowrap">Manufacture</span>
+                </div>
+              </motion.div>
+
+              {/* ── NODE: Logistics (top vertex: 230, 68) ── */}
+              <motion.div className="absolute z-10" style={{ top: "calc(14.8% - 32px)", left: "calc(50% - 32px)" }} initial={{ y: -25, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ delay: 0.3, type: "spring", stiffness: 150, damping: 13 }} viewport={{ once: true }}>
+                <div className="relative group">
+                  <div className="w-16 h-16 rounded-full bg-white shadow-[0_4px_20px_rgba(0,74,198,0.1)] flex items-center justify-center border border-primary/10 transition-shadow group-hover:shadow-[0_6px_28px_rgba(0,74,198,0.18)]">
+                    <span className="material-symbols-outlined text-primary" style={{ fontSize: 26 }}>local_shipping</span>
+                  </div>
+                  <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-label font-semibold text-slate-400 whitespace-nowrap">Logistics</span>
+                </div>
+              </motion.div>
+
+              {/* ── NODE: Pharmacy (top-right vertex: 362, 149) ── */}
+              <motion.div className="absolute z-10" style={{ top: "calc(32.4% - 32px)", left: "calc(78.7% - 32px)" }} initial={{ scale: 0, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} transition={{ delay: 0.45, type: "spring", stiffness: 150, damping: 13 }} viewport={{ once: true }}>
+                <div className="relative group">
+                  <div className="w-16 h-16 rounded-full bg-white shadow-[0_4px_20px_rgba(0,74,198,0.1)] flex items-center justify-center border border-primary/10 transition-shadow group-hover:shadow-[0_6px_28px_rgba(0,74,198,0.18)]">
+                    <span className="material-symbols-outlined text-primary" style={{ fontSize: 26 }}>local_pharmacy</span>
+                  </div>
+                  <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-label font-semibold text-slate-400 whitespace-nowrap">Pharmacy</span>
+                </div>
+              </motion.div>
+
+              {/* ── NODE: Audit (bottom-left vertex: 98, 311) ── */}
+              <motion.div className="absolute z-10" style={{ top: "calc(67.6% - 32px)", left: "calc(21.3% - 32px)" }} initial={{ scale: 0, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} transition={{ delay: 0.6, type: "spring", stiffness: 150, damping: 13 }} viewport={{ once: true }}>
+                <div className="relative group">
+                  <div className="w-16 h-16 rounded-full bg-white shadow-[0_4px_20px_rgba(0,74,198,0.1)] flex items-center justify-center border border-primary/10 transition-shadow group-hover:shadow-[0_6px_28px_rgba(0,74,198,0.18)]">
+                    <span className="material-symbols-outlined text-primary" style={{ fontSize: 26 }}>verified_user</span>
+                  </div>
+                  <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-label font-semibold text-slate-400 whitespace-nowrap">Audit</span>
+                </div>
+              </motion.div>
+
+              {/* ── NODE: Patient (bottom-right vertex: 362, 311) ── */}
+              <motion.div className="absolute z-10" style={{ top: "calc(67.6% - 32px)", left: "calc(78.7% - 32px)" }} initial={{ scale: 0, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} transition={{ delay: 0.75, type: "spring", stiffness: 150, damping: 13 }} viewport={{ once: true }}>
+                <div className="relative group">
+                  <div className="w-16 h-16 rounded-full bg-white shadow-[0_4px_20px_rgba(0,74,198,0.1)] flex items-center justify-center border border-primary/10 transition-shadow group-hover:shadow-[0_6px_28px_rgba(0,74,198,0.18)]">
+                    <span className="material-symbols-outlined text-primary" style={{ fontSize: 26 }}>qr_code_scanner</span>
+                  </div>
+                  <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-label font-semibold text-slate-400 whitespace-nowrap">Patient</span>
+                </div>
+              </motion.div>
+
+              {/* ── NODE: Verified (bottom vertex: 230, 392) ── */}
+              <motion.div className="absolute z-10" style={{ top: "calc(85.2% - 28px)", left: "calc(50% - 28px)" }} initial={{ scale: 0, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} transition={{ delay: 1, type: "spring", stiffness: 160, damping: 13 }} viewport={{ once: true }}>
+                <div className="relative group">
+                  <motion.div className="absolute -inset-2 rounded-full border border-green-400/20" animate={{ scale: [1, 1.5], opacity: [0.3, 0] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }} />
+                  <div className="w-14 h-14 rounded-full bg-white shadow-[0_4px_20px_rgba(0,110,45,0.12)] flex items-center justify-center border border-green-400/20 transition-shadow group-hover:shadow-[0_6px_28px_rgba(0,110,45,0.22)]">
+                    <span className="material-symbols-outlined text-secondary" style={{ fontSize: 24, fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                  </div>
+                  <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-label font-bold text-secondary whitespace-nowrap">Verified</span>
+                </div>
+              </motion.div>
+
+              {/* ── Floating sparkle particles ── */}
+              <motion.div className="absolute w-1.5 h-1.5 rounded-full bg-primary/20" style={{ top: "10%", left: "36%" }} animate={{ y: [0, -10, 0], opacity: [0.2, 0.5, 0.2] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }} />
+              <motion.div className="absolute w-1 h-1 rounded-full bg-primary/15" style={{ top: "28%", right: "18%" }} animate={{ y: [0, -8, 0], opacity: [0.15, 0.4, 0.15] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.8 }} />
+              <motion.div className="absolute w-1.5 h-1.5 rounded-full bg-primary/15" style={{ bottom: "40%", left: "12%" }} animate={{ x: [0, 6, 0], opacity: [0.1, 0.35, 0.1] }} transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut", delay: 1.5 }} />
+              <motion.div className="absolute w-1 h-1 rounded-full bg-green-400/20" style={{ bottom: "18%", right: "30%" }} animate={{ y: [0, 8, 0], opacity: [0.15, 0.4, 0.15] }} transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut", delay: 2 }} />
+              <motion.div className="absolute w-1 h-1 rounded-full bg-primary/10" style={{ top: "50%", left: "6%" }} animate={{ y: [0, -6, 0], opacity: [0.1, 0.3, 0.1] }} transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut", delay: 1.2 }} />
+              <motion.div className="absolute w-1.5 h-1.5 rounded-full bg-primary/10" style={{ top: "50%", right: "6%" }} animate={{ y: [0, 7, 0], opacity: [0.1, 0.3, 0.1] }} transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut", delay: 2.5 }} />
+            </div>
+          </ParallaxFloat>
+
+          {/* Right — Animated text content */}
+          <div className="flex-1 text-center lg:text-left">
+            <motion.p className="font-label text-xs uppercase tracking-[0.25em] text-primary/50 mb-3" initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.1 }} viewport={{ once: true }}>
+              On-chain integrity
+            </motion.p>
+            <motion.h2 className="font-display text-3xl sm:text-4xl text-slate-800 leading-snug mb-5" initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.25 }} viewport={{ once: true }}>
+              A transparent network<br />you can <span className="italic text-primary">actually</span> trust.
+            </motion.h2>
+            <motion.p className="text-slate-400 leading-relaxed max-w-md mx-auto lg:mx-0 mb-8" initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} viewport={{ once: true }}>
+              Every node in the supply chain is a verifiable checkpoint. No single entity controls the ledger — only consensus moves medicine forward.
+            </motion.p>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-4 mb-8 max-w-md mx-auto lg:mx-0">
+              <CountUp delay={0.5}>
+                <div className="text-center lg:text-left">
+                  <p className="text-2xl font-headline text-slate-800">6</p>
+                  <p className="text-[11px] font-label text-slate-400 mt-0.5">Checkpoints</p>
+                </div>
+              </CountUp>
+              <CountUp delay={0.65}>
+                <div className="text-center lg:text-left">
+                  <p className="text-2xl font-headline text-slate-800">100%</p>
+                  <p className="text-[11px] font-label text-slate-400 mt-0.5">On-chain</p>
+                </div>
+              </CountUp>
+              <CountUp delay={0.8}>
+                <div className="text-center lg:text-left">
+                  <p className="text-2xl font-headline text-secondary">0</p>
+                  <p className="text-[11px] font-label text-slate-400 mt-0.5">Blind Spots</p>
+                </div>
+              </CountUp>
+            </div>
+
+            {/* Feature pills */}
+            <motion.div className="flex flex-wrap gap-3 justify-center lg:justify-start" initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.65 }} viewport={{ once: true }}>
+              <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm border border-slate-100">
+                <span className="h-2 w-2 rounded-full bg-secondary shadow-[0_0_8px_rgba(0,110,45,0.4)]" />
+                <span className="text-slate-600 text-xs font-label">Immutable Records</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm border border-slate-100">
+                <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_8px_rgba(0,74,198,0.4)]" />
+                <span className="text-slate-600 text-xs font-label">Decentralized</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm border border-slate-100">
+                <span className="h-2 w-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]" />
+                <span className="text-slate-600 text-xs font-label">Instant Audit</span>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+
       {/* CTA — scale-in on scroll */}
       <ScaleIn>
         <section className="rounded-2xl bg-primary-container p-12 md:p-20 relative text-center overflow-hidden">
           <div className="absolute inset-0 dot-grid opacity-10 pointer-events-none" />
           <div className="relative z-10">
-            <h2 className="font-headline text-3xl md:text-4xl text-white mb-8">Ready to secure your pharmacy inventory?</h2>
-            <div className="flex flex-wrap justify-center gap-6">
-              <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
-                <Link to="/portal" className="btn bg-white text-primary font-bold hover:bg-slate-50 shadow-xl">Connect Wallet</Link>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
-                <Link to="/verify" className="btn border-2 border-white/30 text-white font-bold hover:bg-white/10">Verify Medicine</Link>
-              </motion.div>
-            </div>
+            <Reveal delay={0.1}>
+              <h2 className="font-headline text-3xl md:text-4xl text-white mb-8">Ready to secure your pharmacy inventory?</h2>
+            </Reveal>
+            <Reveal delay={0.25} direction="up">
+              <div className="flex flex-wrap justify-center gap-6">
+                <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
+                  <Link to="/portal" className="btn bg-white text-primary font-bold hover:bg-slate-50 shadow-xl">Connect Wallet</Link>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
+                  <Link to="/verify" className="btn border-2 border-white/30 text-white font-bold hover:bg-white/10">Verify Medicine</Link>
+                </motion.div>
+              </div>
+            </Reveal>
           </div>
         </section>
       </ScaleIn>
