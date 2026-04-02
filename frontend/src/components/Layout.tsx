@@ -22,6 +22,7 @@ export function Layout() {
   const { address, isConnected } = useAccount();
   const location = useLocation();
   const [roleVersion, setRoleVersion] = useState(0);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const { data: owner } = useReadContract({ address: CONTRACT_ADDRESS, abi: medicineSupplyChainAbi, functionName: "owner" });
   const isOwner = !!address && address.toLowerCase() === String(owner).toLowerCase();
 
@@ -34,6 +35,10 @@ export function Layout() {
   useEffect(() => {
     setRoleVersion((v) => v + 1);
   }, [location.pathname, address]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   const role = useMemo(() => effectiveRole(address, isOwner), [address, isOwner, roleVersion]);
 
@@ -68,27 +73,79 @@ export function Layout() {
 
   return (
     <div className="app-shell">
+      {/* Glass Nav */}
       <header className="topbar">
-        <Link to="/" className="logo">
-          MedSecure
-        </Link>
-        <nav
-          className="nav max-w-[calc(100vw-8rem)] flex-1 overflow-x-auto pb-0.5 sm:max-w-none sm:flex-wrap sm:overflow-visible sm:pb-0"
-          aria-label="Main"
-        >
-          {links.map(([label, href], i) => (
-            <NavLink key={`${href}-${i}`} to={href} className={({ isActive }) => (isActive ? "active shrink-0" : "shrink-0")}>
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex items-center gap-8">
+          <Link to="/" className="logo">MedSecure</Link>
+          <nav className="nav" aria-label="Main">
+            {links.map(([label, href], i) => (
+              <NavLink
+                key={`${href}-${i}`}
+                to={href}
+                className={({ isActive }) => isActive ? "active shrink-0" : "shrink-0"}
+              >
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            className="md:hidden material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-opacity"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle navigation"
+          >
+            {mobileOpen ? "close" : "menu"}
+          </button>
           <ConnectButton />
         </div>
       </header>
-      <main className="container">
+
+      {/* Mobile nav overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-white/95 backdrop-blur-md pt-20 px-6 md:hidden animate-fade-in">
+          <nav className="flex flex-col gap-2">
+            {links.map(([label, href], i) => (
+              <NavLink
+                key={`${href}-${i}`}
+                to={href}
+                className={({ isActive }) =>
+                  `px-4 py-3 rounded-xl font-label text-sm tracking-wide transition-colors ${
+                    isActive ? "bg-primary text-on-primary" : "text-slate-600 hover:bg-surface-c-low"
+                  }`
+                }
+                onClick={() => setMobileOpen(false)}
+              >
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+      )}
+
+      {/* Page content — offset by nav height */}
+      <main className="container pt-24">
         <Outlet />
       </main>
+
+      {/* Footer */}
+      <footer className="footer">
+        <div className="flex flex-col md:flex-row justify-between items-center px-6 md:px-12 max-w-7xl mx-auto gap-4">
+          <div className="flex items-center gap-2">
+            <span className="font-headline italic text-slate-700">MedSecure Ledger</span>
+            <span className="text-slate-300 mx-2">|</span>
+            <span className="font-body text-sm tracking-wide text-slate-500">Live on Ethereum Sepolia</span>
+          </div>
+          <div className="flex items-center gap-8">
+            <span className="text-slate-500 font-body text-sm tracking-wide">Documentation</span>
+            <span className="text-slate-500 font-body text-sm tracking-wide">Security</span>
+            <span className="text-slate-500 font-body text-sm tracking-wide">Support</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
