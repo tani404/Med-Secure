@@ -1,0 +1,7 @@
+node_modules/
+frontend/node_modules/
+smart-contracts/node_modules/
+.vite/
+.env
+build/
+dist/
