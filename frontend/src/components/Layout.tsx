@@ -76,7 +76,7 @@ export function Layout() {
       {/* Glass Nav */}
       <header className="topbar">
         <div className="flex items-center gap-8">
-          <Link to="/" className="logo">MedSecure</Link>
+          <Link to="/" className="logo flex items-center gap-2"><img src="/logo.svg" alt="MedSecure" className="h-8 w-8" />MedSecure</Link>
           <nav className="nav" aria-label="Main">
             {links.map(([label, href], i) => (
               <NavLink
@@ -135,6 +135,7 @@ export function Layout() {
       <footer className="footer">
         <div className="flex flex-col md:flex-row justify-between items-center px-6 md:px-12 max-w-7xl mx-auto gap-4">
           <div className="flex items-center gap-2">
+            <img src="/logo.svg" alt="MedSecure" className="h-6 w-6" />
             <span className="font-headline italic text-slate-700">MedSecure Ledger</span>
             <span className="text-slate-300 mx-2">|</span>
             <span className="font-body text-sm tracking-wide text-slate-500">Live on Ethereum Sepolia</span>

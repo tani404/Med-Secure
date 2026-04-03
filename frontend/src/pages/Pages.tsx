@@ -630,6 +630,23 @@ export function RolePortalPage() {
 
 /* ═══════════════════════════════ VERIFY ═══════════════════════════════ */
 
+/* ── AI Prediction Types ── */
+type AiAnalysis = {
+  summary: string;
+  reasons: string[];
+  risk_level: "low" | "medium" | "high";
+};
+
+type AiPrediction = {
+  filename: string;
+  prediction: "Real" | "Fake";
+  confidence: string;
+  probabilities: { fake: number; real: number };
+  analysis: AiAnalysis;
+};
+
+const AI_API_URL = import.meta.env.VITE_AI_API_URL || "";
+
 export function VerifyPage() {
   const [batchId, setBatchId] = useState("");
   const id = batchId ? BigInt(batchId) : undefined;
@@ -643,14 +660,223 @@ export function VerifyPage() {
 
   const hasResult = data && data[0] !== "";
 
+  /* ── AI Image Verification State ── */
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<AiPrediction | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleFileSelect = (file: File) => {
+    const validTypes = ["image/jpeg", "image/png", "image/bmp"];
+    if (!validTypes.includes(file.type)) {
+      setAiError("Invalid file type. Please upload a JPG, PNG, or BMP image.");
+      return;
+    }
+    setSelectedFile(file);
+    setAiError("");
+    setAiResult(null);
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0]);
+  };
+
+  const handleAnalyze = async () => {
+    if (!selectedFile) return;
+    setAiLoading(true);
+    setAiError("");
+    setAiResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      const res = await fetch(`${AI_API_URL}/predict`, { method: "POST", body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Server error" }));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      const result: AiPrediction = await res.json();
+      setAiResult(result);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Failed to connect to AI service.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const resetAi = () => {
+    setSelectedFile(null);
+    setImagePreview(null);
+    setAiResult(null);
+    setAiError("");
+  };
+
+  const riskColors = { low: "text-secondary", medium: "text-tertiary", high: "text-error" };
+  const riskBg = { low: "bg-secondary/10", medium: "bg-tertiary/10", high: "bg-error/10" };
+
   return (
     <div className="max-w-[700px] mx-auto space-y-10">
       <header>
         <h1 className="font-headline text-[26px] italic">Verify Medical Integrity</h1>
-        <p className="muted mt-1">Query the immutable Ethereum ledger to validate pharmaceutical batches.</p>
+        <p className="muted mt-1">Query the immutable Ethereum ledger and AI-powered image analysis to validate pharmaceutical batches.</p>
       </header>
 
-      {/* Search bar */}
+      {/* ── AI Image Verification Section ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-tertiary/20 rounded-lg flex items-center justify-center">
+            <Icon name="smart_toy" className="text-tertiary text-sm" />
+          </div>
+          <div>
+            <h2 className="font-headline text-lg italic">AI Image Analysis</h2>
+            <p className="font-label text-[10px] text-outline uppercase tracking-widest">ResNet50 Counterfeit Detection Model</p>
+          </div>
+        </div>
+
+        {!aiResult ? (
+          <div className="card card-padded space-y-4">
+            {/* Drop Zone */}
+            <div
+              className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer
+                ${dragActive ? "border-primary bg-primary/5" : "border-surface-c-highest hover:border-primary/50 hover:bg-surface-c-low"}`}
+              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+              onDragLeave={() => setDragActive(false)}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById("ai-file-input")?.click()}
+            >
+              <input
+                id="ai-file-input"
+                type="file"
+                accept=".jpg,.jpeg,.png,.bmp"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+              />
+              {imagePreview ? (
+                <div className="space-y-4">
+                  <img src={imagePreview} alt="Preview" className="max-h-48 mx-auto rounded-lg object-contain" />
+                  <p className="text-sm text-on-surface-variant font-medium">{selectedFile?.name}</p>
+                  <p className="font-label text-[10px] text-outline">Click or drop to replace</p>
+                </div>
+              ) : (
+                <div className="space-y-3 py-4">
+                  <Icon name="cloud_upload" className="text-4xl text-outline/60" />
+                  <p className="text-sm font-medium text-on-surface-variant">Upload a medicine image for AI analysis</p>
+                  <p className="font-label text-[10px] text-outline">Drag & drop or click to browse. Supports JPG, PNG, BMP.</p>
+                </div>
+              )}
+            </div>
+
+            {aiError && <p className="error-text text-sm">{aiError}</p>}
+
+            {/* Analyze Button */}
+            <button
+              className="btn btn-primary w-full flex items-center justify-center gap-2"
+              onClick={handleAnalyze}
+              disabled={!selectedFile || aiLoading}
+            >
+              {aiLoading ? (
+                <><Spinner /> Analyzing image…</>
+              ) : (
+                <><Icon name="biotech" className="text-lg" /> Analyze with AI</>
+              )}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4 animate-fade-in">
+            {/* AI Verdict Card */}
+            <div className={aiResult.prediction === "Real" ? "verdict-authentic" : "verdict-fail"}>
+              <div className="flex items-center gap-4">
+                <div className={`${aiResult.prediction === "Real" ? "bg-secondary text-on-secondary" : "bg-error text-on-error"} w-10 h-10 rounded-full flex items-center justify-center`}>
+                  <Icon name={aiResult.prediction === "Real" ? "verified_user" : "gpp_bad"} fill />
+                </div>
+                <div className="flex-1">
+                  <h2 className={`${aiResult.prediction === "Real" ? "text-secondary" : "text-error"} font-bold text-lg tracking-tight font-body`}>
+                    {aiResult.prediction === "Real" ? "AI: GENUINE MEDICINE" : "AI: COUNTERFEIT DETECTED"}
+                  </h2>
+                  <p className="font-label text-[11px] text-on-surface-variant uppercase tracking-widest opacity-80">
+                    Confidence: {aiResult.confidence}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Probabilities Bar */}
+            <div className="card card-padded space-y-3">
+              <h3 className="text-sm font-bold text-on-surface border-b border-surface-c-high pb-3">Classification Probabilities</h3>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-label">
+                  <span className="text-secondary font-medium">Genuine</span>
+                  <span className="text-on-surface-variant">{aiResult.probabilities.real.toFixed(1)}%</span>
+                </div>
+                <div className="w-full bg-surface-c-high rounded-full h-2.5">
+                  <div className="bg-secondary h-2.5 rounded-full transition-all duration-700" style={{ width: `${aiResult.probabilities.real}%` }} />
+                </div>
+                <div className="flex items-center justify-between text-xs font-label mt-2">
+                  <span className="text-error font-medium">Counterfeit</span>
+                  <span className="text-on-surface-variant">{aiResult.probabilities.fake.toFixed(1)}%</span>
+                </div>
+                <div className="w-full bg-surface-c-high rounded-full h-2.5">
+                  <div className="bg-error h-2.5 rounded-full transition-all duration-700" style={{ width: `${aiResult.probabilities.fake}%` }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Analysis Description */}
+            <div className="card card-padded space-y-4">
+              <div className="flex items-center gap-3 border-b border-surface-c-high pb-3">
+                <Icon name="analytics" className="text-primary" />
+                <h3 className="text-sm font-bold text-on-surface">Detailed Analysis</h3>
+                <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${riskBg[aiResult.analysis.risk_level]} ${riskColors[aiResult.analysis.risk_level]}`}>
+                  {aiResult.analysis.risk_level} risk
+                </span>
+              </div>
+              <p className="text-sm text-on-surface-variant leading-relaxed">{aiResult.analysis.summary}</p>
+              <div className="space-y-2.5">
+                {aiResult.analysis.reasons.map((reason, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <Icon
+                      name={aiResult.prediction === "Real" ? "check_circle" : "warning"}
+                      className={`text-sm mt-0.5 ${aiResult.prediction === "Real" ? "text-secondary" : "text-error"}`}
+                      fill
+                    />
+                    <p className="text-xs text-on-surface-variant leading-relaxed">{reason}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Image Preview + Reset */}
+            <div className="flex items-center gap-4">
+              {imagePreview && (
+                <img src={imagePreview} alt="Analyzed" className="w-16 h-16 rounded-lg object-cover border border-surface-c-high" />
+              )}
+              <div className="flex-1">
+                <p className="text-xs font-medium text-on-surface">{aiResult.filename}</p>
+                <p className="font-label text-[10px] text-outline">Analyzed by ResNet50 model</p>
+              </div>
+              <button className="btn border border-surface-c-highest text-on-surface-variant text-sm px-4 py-2" onClick={resetAi}>
+                <Icon name="refresh" className="text-sm" /> New Scan
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Divider ── */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1 h-px bg-surface-c-highest" />
+        <span className="font-label text-[10px] text-outline uppercase tracking-[0.2em]">Blockchain Verification</span>
+        <div className="flex-1 h-px bg-surface-c-highest" />
+      </div>
+
+      {/* ── Batch ID Search ── */}
       <div className="space-y-2">
         <div className="flex items-center">
           <input
