@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1E3A5F"/>
+      <stop offset="100%" stop-color="#0F2439"/>
+    </linearGradient>
+    <linearGradient id="crossGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#CBD5E1"/>
+    </linearGradient>
+    <linearGradient id="chainGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer glow -->
+  <ellipse cx="256" cy="280" rx="180" ry="200" fill="url(#glowGrad)" opacity="0.5"/>
+
+  <!-- Shield body -->
+  <path d="M256 42 L436 130 C436 130 440 320 256 470 C72 320 76 130 76 130 Z"
+        fill="url(#shieldGrad)" stroke="#3B82F6" stroke-width="4"/>
+
+  <!-- Inner shield border -->
+  <path d="M256 68 L414 146 C414 146 418 310 256 444 C94 310 98 146 98 146 Z"
+        fill="none" stroke="#3B82F6" stroke-width="1.5" opacity="0.3"/>
+
+  <!-- Medical cross -->
+  <rect x="224" y="150" width="64" height="180" rx="8" fill="url(#crossGrad)" opacity="0.95"/>
+  <rect x="176" y="208" width="160" height="64" rx="8" fill="url(#crossGrad)" opacity="0.95"/>
+
+  <!-- Blockchain chain links - bottom of shield -->
+  <!-- Left chain link -->
+  <rect x="142" y="368" width="44" height="24" rx="12" fill="none" stroke="url(#chainGrad)" stroke-width="3.5"/>
+  <!-- Center-left chain link -->
+  <rect x="196" y="368" width="44" height="24" rx="12" fill="none" stroke="url(#chainGrad)" stroke-width="3.5"/>
+  <!-- Center-right chain link -->
+  <rect x="272" y="368" width="44" height="24" rx="12" fill="none" stroke="url(#chainGrad)" stroke-width="3.5"/>
+  <!-- Right chain link -->
+  <rect x="326" y="368" width="44" height="24" rx="12" fill="none" stroke="url(#chainGrad)" stroke-width="3.5"/>
+
+  <!-- Chain connectors -->
+  <line x1="186" y1="380" x2="196" y2="380" stroke="url(#chainGrad)" stroke-width="3"/>
+  <line x1="240" y1="380" x2="272" y2="380" stroke="url(#chainGrad)" stroke-width="3"/>
+  <line x1="316" y1="380" x2="326" y2="380" stroke="url(#chainGrad)" stroke-width="3"/>
+
+  <!-- Small accent dots on shield -->
+  <circle cx="136" cy="180" r="3" fill="#3B82F6" opacity="0.5"/>
+  <circle cx="376" cy="180" r="3" fill="#3B82F6" opacity="0.5"/>
+  <circle cx="120" cy="240" r="2.5" fill="#3B82F6" opacity="0.4"/>
+  <circle cx="392" cy="240" r="2.5" fill="#3B82F6" opacity="0.4"/>
+</svg>
