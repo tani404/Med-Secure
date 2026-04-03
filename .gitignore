@@ -28,7 +28,4 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
-
-# Model files
-*.bin
-*.safetensors
+nul
