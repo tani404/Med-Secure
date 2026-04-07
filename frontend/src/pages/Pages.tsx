@@ -208,11 +208,29 @@ export function LandingPage() {
           speedY={0.3}
           spotlightRadius={400}
         >
-          {/* Ambient glow orbs */}
+          {/* Ambient glow orbs — layered depth */}
           <div className="absolute inset-0 pointer-events-none z-[1]">
-            <div className="absolute right-[-10%] top-[-15%] w-[40%] h-[40%] rounded-full bg-blue-500/15 blur-[120px]" />
-            <div className="absolute right-[15%] top-[-5%] w-[20%] h-[20%] rounded-full bg-primary/20 blur-[100px]" />
-            <div className="absolute left-[-5%] bottom-[-15%] w-[35%] h-[35%] rounded-full bg-blue-400/10 blur-[120px]" />
+            <motion.div
+              className="absolute right-[-10%] top-[-15%] w-[45%] h-[45%] rounded-full bg-blue-500/15 blur-[140px]"
+              animate={{ scale: [1, 1.08, 1], opacity: [0.15, 0.22, 0.15] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute right-[15%] top-[-5%] w-[22%] h-[22%] rounded-full bg-primary/20 blur-[100px]"
+              animate={{ scale: [1, 1.12, 1], opacity: [0.2, 0.3, 0.2] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+            />
+            <motion.div
+              className="absolute left-[-5%] bottom-[-15%] w-[38%] h-[38%] rounded-full bg-blue-400/10 blur-[130px]"
+              animate={{ scale: [1, 1.06, 1], opacity: [0.1, 0.18, 0.1] }}
+              transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+            />
+            {/* Extra center glow */}
+            <motion.div
+              className="absolute left-[30%] top-[30%] w-[30%] h-[30%] rounded-full bg-indigo-400/8 blur-[100px]"
+              animate={{ x: [0, 30, 0], y: [0, -20, 0], opacity: [0.06, 0.12, 0.06] }}
+              transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+            />
           </div>
 
           <div className="relative z-10 max-w-[760px] mx-auto flex flex-col items-center text-center">
@@ -227,7 +245,7 @@ export function LandingPage() {
 
             <motion.h1 className="text-balance" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}>
               Securing the global pharmaceutical supply chain with{" "}
-              <span className="text-primary italic">MedSecure</span> Ledger.
+              <span className="italic bg-gradient-to-r from-primary via-blue-500 to-indigo-500 bg-clip-text text-transparent">MedSecure</span> Ledger.
             </motion.h1>
 
             <motion.p className="mt-6 text-base sm:text-[16px] max-w-[520px]" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}>
@@ -532,21 +550,295 @@ export function LandingPage() {
         </div>
       </div>
 
+      {/* ── AI-Powered Verification Section ── */}
+      <section className="py-4">
+        <Reveal>
+          <div className="text-center mb-12">
+            <p className="font-label text-xs uppercase tracking-[0.3em] text-primary/60 mb-3">AI + Blockchain</p>
+            <h2 className="font-display text-3xl sm:text-4xl text-slate-800">
+              Multi-layered <span className="italic text-primary">AI verification</span>
+            </h2>
+            <p className="text-slate-400 mt-3 max-w-lg mx-auto">
+              Our camera scan pipeline uses 5 AI models working together to detect counterfeits that humans can't see.
+            </p>
+          </div>
+        </Reveal>
+
+        <StaggerList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" stagger={0.1}>
+          {([
+            ["document_scanner", "OCR Extraction", "NVIDIA Nemotron reads medicine text from camera photos with multi-rotation for any angle.", "bg-blue-50 text-blue-600"],
+            ["psychology", "Claude AI Analysis", "Identifies medicine name, dosage, and manufacturer from garbled OCR text.", "bg-purple-50 text-purple-600"],
+            ["image_search", "CLIP Visual Match", "Compares your photo against Google reference images using neural embeddings.", "bg-emerald-50 text-emerald-600"],
+            ["fingerprint", "Authenticity Check", "Claude Haiku validates batch numbers, dates, and license formats for logical consistency.", "bg-amber-50 text-amber-600"],
+            ["blur_on", "Forensic Analysis", "Detects print quality anomalies: sharpness, color banding, noise — signs of counterfeit printing.", "bg-rose-50 text-rose-600"],
+            ["neurology", "ResNet50 Deep Scan", "Downloads all reference images and classifies each through a trained counterfeit detection model.", "bg-indigo-50 text-indigo-600"],
+          ] as const).map(([icon, title, desc, colors]) => (
+            <StaggerItem key={title}>
+              <HoverLift className="bg-white rounded-xl p-6 border border-slate-100 shadow-sm h-full">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${colors}`}>
+                  <Icon name={icon} className="text-xl" />
+                </div>
+                <h4 className="font-bold text-base text-slate-800 mb-2">{title}</h4>
+                <p className="text-slate-500 text-sm leading-relaxed">{desc}</p>
+              </HoverLift>
+            </StaggerItem>
+          ))}
+        </StaggerList>
+      </section>
+
+      {/* ── Trusted Numbers Section ── */}
+      <section className="py-4">
+        <div className="bg-gradient-to-br from-primary via-blue-600 to-indigo-700 rounded-2xl p-10 md:p-16 relative overflow-hidden">
+          <div className="absolute inset-0 dot-grid opacity-10 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-[40%] h-[60%] bg-white/8 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-[30%] h-[50%] bg-indigo-300/10 rounded-full blur-[80px] pointer-events-none" />
+
+          <div className="relative z-10">
+            <Reveal>
+              <p className="font-label text-xs uppercase tracking-[0.3em] text-blue-200/80 mb-2">By the numbers</p>
+              <h2 className="font-display text-3xl sm:text-4xl text-white mb-10">
+                Built for <span className="italic text-blue-100">enterprise-grade</span> trust
+              </h2>
+            </Reveal>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {([
+                ["5", "AI Models", "Working in parallel"],
+                ["10+", "References", "Per verification scan"],
+                ["< 30s", "Full Scan", "Camera to verdict"],
+                ["100%", "On-chain", "Immutable audit trail"],
+              ] as const).map(([num, label, sub], i) => (
+                <CountUp key={label} delay={0.15 * i}>
+                  <div className="text-center">
+                    <p className="text-3xl md:text-4xl font-headline text-white mb-1">{num}</p>
+                    <p className="text-sm font-semibold text-blue-100">{label}</p>
+                    <p className="text-[11px] text-blue-200/60 mt-0.5">{sub}</p>
+                  </div>
+                </CountUp>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── How Camera Scan Works (visual flow) ── */}
+      <section className="py-4">
+        <Reveal>
+          <div className="text-center mb-10">
+            <h2 className="font-display text-3xl sm:text-4xl text-slate-800">How Camera Scan Works</h2>
+            <p className="text-slate-400 mt-2 max-w-md mx-auto">Point your camera at any medicine — our AI pipeline does the rest.</p>
+          </div>
+        </Reveal>
+
+        <div className="relative">
+          {/* Connection line */}
+          <div className="hidden md:block absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent -translate-y-1/2 z-0" />
+
+          <StaggerList className="grid grid-cols-1 md:grid-cols-5 gap-4" stagger={0.12}>
+            {([
+              ["1", "photo_camera", "Capture", "Take a photo of the medicine packaging"],
+              ["2", "text_fields", "OCR + AI", "Extract and identify medicine details"],
+              ["3", "travel_explore", "Search", "Find reference images from trusted sources"],
+              ["4", "compare", "Compare", "CLIP + ResNet50 visual analysis"],
+              ["5", "verified", "Verdict", "Claude AI combines all signals for final result"],
+            ] as const).map(([num, icon, title, desc]) => (
+              <StaggerItem key={num}>
+                <div className="relative z-10 text-center">
+                  <div className="w-14 h-14 mx-auto rounded-full bg-white shadow-lg border-2 border-primary/20 flex items-center justify-center mb-3">
+                    <Icon name={icon} className="text-primary text-xl" />
+                  </div>
+                  <div className="bg-primary text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center mx-auto -mt-6 mb-2 relative z-20 shadow">{num}</div>
+                  <h4 className="font-bold text-sm text-slate-800">{title}</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">{desc}</p>
+                </div>
+              </StaggerItem>
+            ))}
+          </StaggerList>
+        </div>
+      </section>
+
+      {/* ── Blockchain & Web3 Architecture ── */}
+      <section className="py-4">
+        <Reveal>
+          <div className="text-center mb-12">
+            <p className="font-label text-xs uppercase tracking-[0.3em] text-primary/60 mb-3">Web3 Architecture</p>
+            <h2 className="font-display text-3xl sm:text-4xl text-slate-800">
+              Powered by <span className="italic bg-gradient-to-r from-primary via-blue-500 to-indigo-500 bg-clip-text text-transparent">Ethereum</span> Smart Contracts
+            </h2>
+            <p className="text-slate-400 mt-3 max-w-xl mx-auto">
+              Every medicine batch is tracked on-chain from manufacturing to patient. No central authority can tamper with the record.
+            </p>
+          </div>
+        </Reveal>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left — Smart Contract Functions */}
+          <Reveal direction="left">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-slate-900 to-slate-800 flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-400" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                  <div className="w-3 h-3 rounded-full bg-green-400" />
+                </div>
+                <span className="text-slate-400 text-xs font-mono">MedicineSupplyChain.sol</span>
+              </div>
+              <div className="p-6 space-y-3 font-mono text-sm">
+                {([
+                  ["manufactureUnit()", "Create a new medicine batch on-chain", "text-blue-500"],
+                  ["transferToDistributor()", "Assign custody to a verified distributor", "text-emerald-500"],
+                  ["transferToPharmacy()", "Forward batch from distributor to pharmacy", "text-amber-500"],
+                  ["markAsSold()", "Record final sale to patient", "text-purple-500"],
+                  ["verifyUnit()", "Anyone can verify full batch history", "text-rose-500"],
+                ] as const).map(([fn, desc, color], i) => (
+                  <motion.div
+                    key={fn}
+                    className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors"
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.1 * i, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <span className={`${color} font-bold shrink-0`}>{`fn`}</span>
+                    <div>
+                      <code className="text-slate-800 text-xs">{fn}</code>
+                      <p className="text-slate-400 text-[11px] font-sans mt-0.5">{desc}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+
+          {/* Right — Web3 Flow */}
+          <div className="space-y-4">
+            <Reveal direction="right" delay={0.1}>
+              <div className="bg-gradient-to-br from-primary/5 to-blue-50 rounded-xl p-6 border border-primary/10">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Icon name="account_balance_wallet" className="text-primary text-xl" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800">MetaMask + WalletConnect</h4>
+                    <p className="text-xs text-slate-400">Connect with any Ethereum wallet</p>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Role-based access control via wallet signatures. Manufacturers, distributors, and pharmacies each get unique permissions tied to their Ethereum address.
+                </p>
+              </div>
+            </Reveal>
+
+            <Reveal direction="right" delay={0.2}>
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-6 border border-emerald-100">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                    <Icon name="link" className="text-emerald-600 text-xl" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800">Sepolia Testnet</h4>
+                    <p className="text-xs text-slate-400">Deployed and verified on Ethereum L1</p>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Every state transition emits an immutable event. Full batch history is reconstructable from on-chain data alone — no database required.
+                </p>
+              </div>
+            </Reveal>
+
+            <Reveal direction="right" delay={0.3}>
+              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-100">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                    <Icon name="shield" className="text-purple-600 text-xl" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800">Zero-Trust Verification</h4>
+                    <p className="text-xs text-slate-400">Anyone can audit, nobody can tamper</p>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Consumers scan any medicine and get the complete chain of custody — from factory to pharmacy — verified by cryptographic proofs, not corporate promises.
+                </p>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Tech Stack Marquee ── */}
+      <section className="py-6 overflow-hidden">
+        <Reveal>
+          <p className="text-center font-label text-xs uppercase tracking-[0.3em] text-slate-300 mb-6">Powered by</p>
+        </Reveal>
+        <div className="relative">
+          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-white to-transparent z-10" />
+          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white to-transparent z-10" />
+          <motion.div
+            className="flex gap-12 items-center whitespace-nowrap"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          >
+            {[...Array(2)].map((_, dup) => (
+              <div key={dup} className="flex gap-12 items-center shrink-0">
+                {([
+                  "Ethereum", "Solidity", "Foundry", "React", "TypeScript", "Vite",
+                  "FastAPI", "PyTorch", "ResNet50", "CLIP", "Claude AI", "NVIDIA OCR",
+                  "SerpAPI", "Wagmi", "RainbowKit", "TailwindCSS", "Framer Motion",
+                ]).map((tech) => (
+                  <span key={`${dup}-${tech}`} className="text-slate-300 font-label text-sm font-medium tracking-wide">{tech}</span>
+                ))}
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
       {/* CTA — scale-in on scroll */}
       <ScaleIn>
-        <section className="rounded-2xl bg-primary-container p-12 md:p-20 relative text-center overflow-hidden">
+        <section className="rounded-2xl bg-gradient-to-br from-primary via-blue-600 to-indigo-700 p-12 md:p-20 relative text-center overflow-hidden">
           <div className="absolute inset-0 dot-grid opacity-10 pointer-events-none" />
+          <motion.div
+            className="absolute top-[-20%] right-[-10%] w-[50%] h-[80%] rounded-full bg-white/5 blur-[80px]"
+            animate={{ scale: [1, 1.15, 1], opacity: [0.05, 0.1, 0.05] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute bottom-[-20%] left-[-10%] w-[40%] h-[60%] rounded-full bg-indigo-300/10 blur-[60px]"
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          />
           <div className="relative z-10">
             <Reveal delay={0.1}>
-              <h2 className="font-headline text-3xl md:text-4xl text-white mb-8">Ready to secure your pharmacy inventory?</h2>
+              <motion.div
+                className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-1.5 mb-6 border border-white/10"
+                animate={{ y: [0, -3, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-300" />
+                </span>
+                <span className="text-white/80 text-xs font-label uppercase tracking-wider">Live on Ethereum</span>
+              </motion.div>
             </Reveal>
-            <Reveal delay={0.25} direction="up">
-              <div className="flex flex-wrap justify-center gap-6">
-                <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
-                  <Link to="/portal" className="btn bg-white text-primary font-bold hover:bg-slate-50 shadow-xl">Connect Wallet</Link>
+            <Reveal delay={0.15}>
+              <h2 className="font-headline text-3xl md:text-5xl text-white mb-4 leading-tight">
+                Ready to secure your<br />pharmacy inventory?
+              </h2>
+            </Reveal>
+            <Reveal delay={0.2}>
+              <p className="text-blue-100/70 max-w-md mx-auto mb-10">
+                Join the decentralized pharmaceutical verification network. Connect your wallet and start verifying in seconds.
+              </p>
+            </Reveal>
+            <Reveal delay={0.3} direction="up">
+              <div className="flex flex-wrap justify-center gap-4">
+                <motion.div whileHover={{ scale: 1.05, y: -3 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
+                  <Link to="/portal" className="btn bg-white text-primary font-bold hover:bg-slate-50 shadow-xl px-8 py-3 text-base">Connect Wallet</Link>
                 </motion.div>
-                <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
-                  <Link to="/verify" className="btn border-2 border-white/30 text-white font-bold hover:bg-white/10">Verify Medicine</Link>
+                <motion.div whileHover={{ scale: 1.05, y: -3 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
+                  <Link to="/verify" className="btn border-2 border-white/30 text-white font-bold hover:bg-white/10 px-8 py-3 text-base">Verify Medicine</Link>
                 </motion.div>
               </div>
             </Reveal>
@@ -637,12 +929,40 @@ type AiAnalysis = {
   risk_level: "low" | "medium" | "high";
 };
 
+type CameraResult = {
+  medicine?: string;
+  status?: string;
+  confidence?: number;
+  ocr_raw?: string;
+  manufacturer?: string;
+  authenticity_verdict?: string;
+  forensics_score?: number;
+};
+
+type RefDetail = {
+  url: string;
+  prediction: "Real" | "Fake";
+  real_prob: number;
+  fake_prob: number;
+};
+
+type RefBreakdown = {
+  total_refs: number;
+  downloaded: number;
+  real_count: number;
+  fake_count: number;
+  details: RefDetail[];
+};
+
 type AiPrediction = {
   filename: string;
   prediction: "Real" | "Fake";
   confidence: string;
   probabilities: { fake: number; real: number };
   analysis: AiAnalysis;
+  source_url?: string;
+  camera_result?: CameraResult;
+  ref_breakdown?: RefBreakdown;
 };
 
 const AI_API_URL = import.meta.env.VITE_AI_API_URL || "";
@@ -660,40 +980,56 @@ export function VerifyPage() {
 
   const hasResult = data && data[0] !== "";
 
-  /* ── AI Image Verification State ── */
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  /* ── Scan Mode ── */
+  type ScanMode = "camera" | "browse";
+  const [scanMode, setScanMode] = useState<ScanMode>("browse");
+
+  /* ── Shared AI State ── */
   const [aiResult, setAiResult] = useState<AiPrediction | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
+
+  /* ── Browse Mode State ── */
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
-  const handleFileSelect = (file: File) => {
-    const validTypes = ["image/jpeg", "image/png", "image/bmp"];
+  /* ── Camera Mode State ── */
+  const [cameraFile, setCameraFile] = useState<File | null>(null);
+  const [cameraPreview, setCameraPreview] = useState<string | null>(null);
+
+  /* ── Shared file handler ── */
+  const handleFileSelect = (file: File, mode: "browse" | "camera") => {
+    const validTypes = ["image/jpeg", "image/png", "image/bmp", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      setAiError("Invalid file type. Please upload a JPG, PNG, or BMP image.");
+      setAiError("Invalid file type. Please use JPG, PNG, BMP, or WEBP.");
       return;
     }
-    setSelectedFile(file);
     setAiError("");
     setAiResult(null);
     const reader = new FileReader();
-    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    if (mode === "camera") {
+      setCameraFile(file);
+      reader.onload = (e) => setCameraPreview(e.target?.result as string);
+    } else {
+      setSelectedFile(file);
+      reader.onload = (e) => setImagePreview(e.target?.result as string);
+    }
     reader.readAsDataURL(file);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
-    if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], "browse");
   };
 
-  const handleAnalyze = async () => {
+  /* ── Analyze (browse) → /predict ── */
+  const handleAnalyzeBrowse = async () => {
     if (!selectedFile) return;
     setAiLoading(true);
     setAiError("");
     setAiResult(null);
-
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
@@ -702,8 +1038,7 @@ export function VerifyPage() {
         const err = await res.json().catch(() => ({ detail: "Server error" }));
         throw new Error(err.detail || `HTTP ${res.status}`);
       }
-      const result: AiPrediction = await res.json();
-      setAiResult(result);
+      setAiResult(await res.json());
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "Failed to connect to AI service.");
     } finally {
@@ -711,12 +1046,60 @@ export function VerifyPage() {
     }
   };
 
+  /* ── Camera pipeline progress steps ── */
+  const CAMERA_STEPS = [
+    "Preprocessing image...",
+    "Running OCR (reading text from packaging)...",
+    "Identifying medicine name & dosage...",
+    "Searching reference images...",
+    "Comparing with CLIP embeddings...",
+    "Checking authenticity (Claude AI)...",
+    "Analyzing print quality (forensics)...",
+    "Running ResNet50 verification...",
+    "Finalizing results...",
+  ];
+  const [cameraStep, setCameraStep] = useState(0);
+
+  /* ── Analyze (camera) → /predict-camera (full pipeline) ── */
+  const handleAnalyzeCamera = async () => {
+    if (!cameraFile) return;
+    setAiLoading(true);
+    setAiError("");
+    setAiResult(null);
+    setCameraStep(0);
+
+    // Animate through steps while waiting
+    const stepInterval = setInterval(() => {
+      setCameraStep((prev) => (prev < CAMERA_STEPS.length - 1 ? prev + 1 : prev));
+    }, 4000);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", cameraFile);
+      const res = await fetch(`${AI_API_URL}/predict-camera`, { method: "POST", body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Server error" }));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      setAiResult(await res.json());
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Failed to connect to AI service.");
+    } finally {
+      clearInterval(stepInterval);
+      setAiLoading(false);
+    }
+  };
+
   const resetAi = () => {
     setSelectedFile(null);
     setImagePreview(null);
+    setCameraFile(null);
+    setCameraPreview(null);
     setAiResult(null);
     setAiError("");
   };
+
+  const activePreview = scanMode === "camera" ? cameraPreview : imagePreview;
 
   const riskColors = { low: "text-secondary", medium: "text-tertiary", high: "text-error" };
   const riskBg = { low: "bg-secondary/10", medium: "bg-tertiary/10", high: "bg-error/10" };
@@ -740,49 +1123,123 @@ export function VerifyPage() {
           </div>
         </div>
 
+        {/* ── Scan Mode Tabs ── */}
+        <div className="flex gap-2 p-1 bg-surface-c-low rounded-xl">
+          {(["camera", "browse"] as ScanMode[]).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => { setScanMode(mode); resetAi(); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all
+                ${scanMode === mode
+                  ? "bg-surface text-on-surface shadow-sm"
+                  : "text-on-surface-variant hover:text-on-surface"}`}
+            >
+              <Icon name={mode === "camera" ? "photo_camera" : "folder_open"} className="text-base" />
+              {mode === "camera" ? "Scan via Camera" : "Browse File"}
+            </button>
+          ))}
+        </div>
+
         {!aiResult ? (
           <div className="card card-padded space-y-4">
-            {/* Drop Zone */}
-            <div
-              className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer
-                ${dragActive ? "border-primary bg-primary/5" : "border-surface-c-highest hover:border-primary/50 hover:bg-surface-c-low"}`}
-              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={handleDrop}
-              onClick={() => document.getElementById("ai-file-input")?.click()}
-            >
-              <input
-                id="ai-file-input"
-                type="file"
-                accept=".jpg,.jpeg,.png,.bmp"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-              />
-              {imagePreview ? (
-                <div className="space-y-4">
-                  <img src={imagePreview} alt="Preview" className="max-h-48 mx-auto rounded-lg object-contain" />
-                  <p className="text-sm text-on-surface-variant font-medium">{selectedFile?.name}</p>
-                  <p className="font-label text-[10px] text-outline">Click or drop to replace</p>
-                </div>
-              ) : (
-                <div className="space-y-3 py-4">
-                  <Icon name="cloud_upload" className="text-4xl text-outline/60" />
-                  <p className="text-sm font-medium text-on-surface-variant">Upload a medicine image for AI analysis</p>
-                  <p className="font-label text-[10px] text-outline">Drag & drop or click to browse. Supports JPG, PNG, BMP.</p>
-                </div>
-              )}
-            </div>
+
+            {/* ── Camera Mode ── */}
+            {scanMode === "camera" && (
+              <div
+                className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer
+                  border-surface-c-highest hover:border-primary/50 hover:bg-surface-c-low`}
+                onClick={() => document.getElementById("camera-file-input")?.click()}
+              >
+                <input
+                  id="camera-file-input"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], "camera")}
+                />
+                {cameraPreview ? (
+                  <div className="space-y-3">
+                    <img src={cameraPreview} alt="Camera capture" className="max-h-48 mx-auto rounded-lg object-contain" />
+                    <p className="text-sm text-on-surface-variant font-medium">{cameraFile?.name}</p>
+                    <p className="font-label text-[10px] text-outline">Tap to retake</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 py-4">
+                    <Icon name="photo_camera" className="text-4xl text-outline/60" />
+                    <p className="text-sm font-medium text-on-surface-variant">Tap to open camera</p>
+                    <p className="font-label text-[10px] text-outline">Point at the medicine packaging — on desktop this opens the file picker</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Browse Mode ── */}
+            {scanMode === "browse" && (
+              <div
+                className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer
+                  ${dragActive ? "border-primary bg-primary/5" : "border-surface-c-highest hover:border-primary/50 hover:bg-surface-c-low"}`}
+                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={handleDrop}
+                onClick={() => document.getElementById("ai-file-input")?.click()}
+              >
+                <input
+                  id="ai-file-input"
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.bmp,.webp"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], "browse")}
+                />
+                {imagePreview ? (
+                  <div className="space-y-3">
+                    <img src={imagePreview} alt="Preview" className="max-h-48 mx-auto rounded-lg object-contain" />
+                    <p className="text-sm text-on-surface-variant font-medium">{selectedFile?.name}</p>
+                    <p className="font-label text-[10px] text-outline">Click or drop to replace</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 py-4">
+                    <Icon name="folder_open" className="text-4xl text-outline/60" />
+                    <p className="text-sm font-medium text-on-surface-variant">Upload a medicine image for AI analysis</p>
+                    <p className="font-label text-[10px] text-outline">Drag & drop or click to browse. Supports JPG, PNG, BMP, WEBP.</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {aiError && <p className="error-text text-sm">{aiError}</p>}
+
+            {/* Camera progress indicator */}
+            {aiLoading && scanMode === "camera" && (
+              <div className="space-y-3 p-4 bg-surface-c-low rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Spinner />
+                  <p className="text-sm font-medium text-on-surface">{CAMERA_STEPS[cameraStep]}</p>
+                </div>
+                <div className="w-full bg-surface-c-high rounded-full h-1.5">
+                  <div
+                    className="bg-primary h-1.5 rounded-full transition-all duration-700 ease-out"
+                    style={{ width: `${((cameraStep + 1) / CAMERA_STEPS.length) * 100}%` }}
+                  />
+                </div>
+                <p className="font-label text-[10px] text-outline text-right">
+                  Step {cameraStep + 1} of {CAMERA_STEPS.length}
+                </p>
+              </div>
+            )}
 
             {/* Analyze Button */}
             <button
               className="btn btn-primary w-full flex items-center justify-center gap-2"
-              onClick={handleAnalyze}
-              disabled={!selectedFile || aiLoading}
+              onClick={scanMode === "camera" ? handleAnalyzeCamera : handleAnalyzeBrowse}
+              disabled={scanMode === "camera" ? (!cameraFile || aiLoading) : (!selectedFile || aiLoading)}
             >
               {aiLoading ? (
-                <><Spinner /> Analyzing image…</>
+                scanMode === "camera" ? (
+                  <><Spinner /> Running full pipeline…</>
+                ) : (
+                  <><Spinner /> Analyzing image…</>
+                )
               ) : (
                 <><Icon name="biotech" className="text-lg" /> Analyze with AI</>
               )}
@@ -804,6 +1261,9 @@ export function VerifyPage() {
                     Confidence: {aiResult.confidence}
                   </p>
                 </div>
+                <span className="font-label text-[10px] text-outline uppercase tracking-wider">
+                  {scanMode === "camera" ? "Camera scan" : "File upload"}
+                </span>
               </div>
             </div>
 
@@ -852,16 +1312,110 @@ export function VerifyPage() {
               </div>
             </div>
 
+            {/* Camera Pipeline Result Card */}
+            {aiResult.camera_result && (
+              <div className="card card-padded space-y-3">
+                <div className="flex items-center gap-3 border-b border-surface-c-high pb-3">
+                  <Icon name="medication" className="text-tertiary" />
+                  <h3 className="text-sm font-bold text-on-surface">Camera Pipeline Analysis</h3>
+                  {aiResult.camera_result.status && (
+                    <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+                      ${aiResult.camera_result.status === "verified" ? "bg-secondary/10 text-secondary" :
+                        aiResult.camera_result.status === "possible" ? "bg-tertiary/10 text-tertiary" :
+                        "bg-error/10 text-error"}`}>
+                      {aiResult.camera_result.status}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {aiResult.camera_result.medicine && (
+                    <div>
+                      <p className="font-label text-[10px] text-outline uppercase tracking-wider mb-0.5">Medicine</p>
+                      <p className="font-medium text-on-surface">{aiResult.camera_result.medicine}</p>
+                    </div>
+                  )}
+                  {aiResult.camera_result.manufacturer && (
+                    <div>
+                      <p className="font-label text-[10px] text-outline uppercase tracking-wider mb-0.5">Manufacturer</p>
+                      <p className="font-medium text-on-surface">{aiResult.camera_result.manufacturer}</p>
+                    </div>
+                  )}
+                  {aiResult.camera_result.confidence !== undefined && (
+                    <div>
+                      <p className="font-label text-[10px] text-outline uppercase tracking-wider mb-0.5">OCR Confidence</p>
+                      <p className="font-medium text-on-surface">{(aiResult.camera_result.confidence * 100).toFixed(1)}%</p>
+                    </div>
+                  )}
+                  {aiResult.camera_result.authenticity_verdict && (
+                    <div>
+                      <p className="font-label text-[10px] text-outline uppercase tracking-wider mb-0.5">Authenticity</p>
+                      <p className={`font-medium capitalize
+                        ${aiResult.camera_result.authenticity_verdict === "authentic" ? "text-secondary" :
+                          aiResult.camera_result.authenticity_verdict === "likely_fake" ? "text-error" :
+                          "text-tertiary"}`}>
+                        {aiResult.camera_result.authenticity_verdict.replace("_", " ")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {aiResult.camera_result.ocr_raw && (
+                  <div>
+                    <p className="font-label text-[10px] text-outline uppercase tracking-wider mb-1">OCR Extracted Text</p>
+                    <p className="text-[11px] text-on-surface-variant font-mono bg-surface-c-low rounded-lg p-2 leading-relaxed break-all">
+                      {aiResult.camera_result.ocr_raw}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Reference Image Breakdown */}
+            {aiResult.ref_breakdown && (
+              <div className="card card-padded space-y-3">
+                <div className="flex items-center gap-3 border-b border-surface-c-high pb-3">
+                  <Icon name="image_search" className="text-primary" />
+                  <h3 className="text-sm font-bold text-on-surface">Reference Images Scanned</h3>
+                  <span className="ml-auto text-[10px] font-label text-outline">
+                    {aiResult.ref_breakdown.downloaded} of {aiResult.ref_breakdown.total_refs} downloaded
+                  </span>
+                </div>
+                <div className="flex gap-3 text-center">
+                  <div className="flex-1 p-2 rounded-lg bg-secondary/10">
+                    <p className="text-xl font-bold text-secondary">{aiResult.ref_breakdown.real_count}</p>
+                    <p className="font-label text-[10px] text-secondary/80 uppercase tracking-wider">Real</p>
+                  </div>
+                  <div className="flex-1 p-2 rounded-lg bg-error/10">
+                    <p className="text-xl font-bold text-error">{aiResult.ref_breakdown.fake_count}</p>
+                    <p className="font-label text-[10px] text-error/80 uppercase tracking-wider">Fake</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {aiResult.ref_breakdown.details.map((ref, i) => (
+                    <div key={i} className="flex items-center gap-2 text-[11px] font-mono">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ref.prediction === "Real" ? "bg-secondary" : "bg-error"}`} />
+                      <span className="text-on-surface-variant truncate flex-1">{ref.url.split("/").pop()?.split("?")[0]}</span>
+                      <span className={`shrink-0 font-bold ${ref.prediction === "Real" ? "text-secondary" : "text-error"}`}>
+                        {ref.real_prob.toFixed(1)}% real
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Image Preview + Reset */}
             <div className="flex items-center gap-4">
-              {imagePreview && (
-                <img src={imagePreview} alt="Analyzed" className="w-16 h-16 rounded-lg object-cover border border-surface-c-high" />
+              {activePreview && (
+                <img src={activePreview} alt="Analyzed" className="w-16 h-16 rounded-lg object-cover border border-surface-c-high" />
               )}
-              <div className="flex-1">
-                <p className="text-xs font-medium text-on-surface">{aiResult.filename}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-on-surface truncate">{aiResult.filename}</p>
+                {aiResult.source_url && (
+                  <p className="font-label text-[10px] text-outline truncate">{aiResult.source_url}</p>
+                )}
                 <p className="font-label text-[10px] text-outline">Analyzed by ResNet50 model</p>
               </div>
-              <button className="btn border border-surface-c-highest text-on-surface-variant text-sm px-4 py-2" onClick={resetAi}>
+              <button className="btn border border-surface-c-highest text-on-surface-variant text-sm px-4 py-2 shrink-0" onClick={resetAi}>
                 <Icon name="refresh" className="text-sm" /> New Scan
               </button>
             </div>

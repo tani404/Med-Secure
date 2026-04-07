@@ -1,15 +1,29 @@
 import os
+import sys
 import subprocess
+import tempfile
+import asyncio
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
 from PIL import Image
 import io
+import urllib.request
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from pathlib import Path
+
+# ── Camera-based model path ────────────────────────────────────────────────
+_CAMERA_MODEL_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "..", "camera_based_model", "medicine-verifier"
+)
+if _CAMERA_MODEL_DIR not in sys.path:
+    sys.path.insert(0, _CAMERA_MODEL_DIR)
 
 # --- MODEL ARCHITECTURE ---
 def create_model():
@@ -27,17 +41,36 @@ def create_model():
     )
     return model
 
+# --- LIFESPAN ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Load model on startup."""
+    try:
+        load_model()
+        print(f"[OK] Model loaded successfully from {MODEL_PATH}")
+    except Exception as e:
+        print(f"[WARN] Model not found at startup. Will attempt to load on first request.")
+        print(f"Error: {str(e)}")
+    yield
+
+
 # --- INITIALIZE FASTAPI APP ---
 app = FastAPI(
     title="MedSecure - Medicine Detection API",
     description="Counterfeit Medicine Detection using ResNet50",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # --- CORS CONFIGURATION ---
+_ALLOWED_ORIGINS = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:5173,http://localhost:3000"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -75,17 +108,6 @@ def load_model():
         ])
     
     return MODEL, TRANSFORM
-
-# --- STARTUP EVENT ---
-@app.on_event("startup")
-async def startup_event():
-    """Load model on startup"""
-    try:
-        load_model()
-        print(f"[OK] Model loaded successfully from {MODEL_PATH}")
-    except Exception as e:
-        print(f"[WARN] Model not found at startup. Will attempt to load on first request.")
-        print(f"Error: {str(e)}")
 
 # --- ENDPOINTS ---
 
@@ -168,12 +190,17 @@ def generate_analysis(prediction: str, confidence: float, prob_fake: float, prob
             f"that diverge from verified authentic pharmaceutical products."
         )
 
+    if prediction == "Real" and confidence >= 85:
+        risk_level = "low"
+    elif prediction == "Fake" and confidence >= 85:
+        risk_level = "high"
+    else:
+        risk_level = "medium"
+
     return {
         "summary": summary,
         "reasons": reasons,
-        "risk_level": "low" if (prediction == "Real" and confidence >= 85) else
-                      "medium" if confidence < 85 else
-                      "high"
+        "risk_level": risk_level,
     }
 
 
@@ -192,7 +219,7 @@ async def predict(file: UploadFile = File(...)):
     """
     try:
         # Validate file type
-        valid_ext = {'.jpg', '.jpeg', '.png', '.bmp'}
+        valid_ext = {'.jpg', '.jpeg', '.png', '.bmp', '.webp'}
         file_ext = Path(file.filename).suffix.lower()
 
         if file_ext not in valid_ext:
@@ -239,6 +266,352 @@ async def predict(file: UploadFile = File(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+
+class PredictUrlRequest(BaseModel):
+    url: str
+
+
+@app.post("/predict-from-url", tags=["Prediction"])
+async def predict_from_url(body: PredictUrlRequest):
+    """
+    Download an image from a URL and predict if it is Real or Fake.
+
+    Used by the camera scan flow — the frontend passes the product
+    reference image URL captured via camera; the API downloads it,
+    runs it through the ResNet50 model, and returns the same response
+    shape as /predict.
+
+    - **url**: Publicly accessible image URL (jpg, png, jpeg, bmp, webp)
+    """
+    try:
+        url = body.url.strip()
+        if not url.startswith(("http://", "https://")):
+            raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
+
+        # Download the image with a spoofed User-Agent to avoid 403s
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; MedSecure/1.0)"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            image_data = resp.read()
+
+        image = Image.open(io.BytesIO(image_data)).convert("RGB")
+
+        model, transform = load_model()
+        input_tensor = transform(image).unsqueeze(0).to(DEVICE)
+
+        with torch.no_grad():
+            outputs = model(input_tensor)
+            probabilities = torch.nn.functional.softmax(outputs, dim=1)
+            conf, pred = torch.max(probabilities, 1)
+
+        prediction = "Real" if pred.item() == 1 else "Fake"
+        confidence = float(conf.item() * 100)
+        prob_fake = float(probabilities[0, 0].item() * 100)
+        prob_real = float(probabilities[0, 1].item() * 100)
+
+        analysis = generate_analysis(prediction, confidence, prob_fake, prob_real)
+
+        # Extract filename from URL for display
+        filename = url.split("/")[-1].split("?")[0] or "camera-capture.jpg"
+
+        return {
+            "filename": filename,
+            "prediction": prediction,
+            "confidence": f"{confidence:.2f}%",
+            "probabilities": {"fake": prob_fake, "real": prob_real},
+            "analysis": analysis,
+            "device": str(DEVICE),
+            "source_url": url,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing image from URL: {str(e)}")
+
+
+@app.post("/predict-camera", tags=["Prediction"])
+async def predict_camera(file: UploadFile = File(...)):
+    """
+    Full camera scan pipeline:
+    1. Save uploaded image to a temp file
+    2. Run camera-based model (OCR → query → CLIP → authenticity → forensics)
+    3. Take the matched_reference URL from the result
+    4. Download that reference image
+    5. Run it through ResNet50
+    6. Return combined result from both models
+    """
+    try:
+        valid_ext = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+        file_ext = Path(file.filename or "image.jpg").suffix.lower()
+        if file_ext not in valid_ext:
+            raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {valid_ext}")
+
+        image_data = await file.read()
+
+        # Save to temp file so camera model can read it by path
+        suffix = file_ext or ".jpg"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(image_data)
+            tmp_path = tmp.name
+
+        try:
+            # ── Step 1: Run camera-based pipeline ──────────────────────────
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                "camera_main",
+                os.path.join(_CAMERA_MODEL_DIR, "main.py"),
+            )
+            camera_main = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(camera_main)
+            camera_result = await camera_main.verify_medicine(tmp_path)
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+
+        # ── Step 2: Download ALL reference images and run ResNet50 ─────────
+        all_ref_urls = camera_result.get("all_ref_urls", [])
+        matched_url = camera_result.get("matched_reference")
+
+        if not all_ref_urls and matched_url:
+            all_ref_urls = [matched_url]
+
+        if not all_ref_urls:
+            return {
+                "filename": file.filename or "camera-capture.jpg",
+                "prediction": "Fake",
+                "confidence": "0.00%",
+                "probabilities": {"fake": 100.0, "real": 0.0},
+                "analysis": generate_analysis("Fake", 0.0, 100.0, 0.0),
+                "device": str(DEVICE),
+                "source_url": None,
+                "camera_result": {
+                    "medicine": camera_result.get("medicine"),
+                    "status": camera_result.get("status"),
+                    "confidence": camera_result.get("confidence"),
+                    "ocr_raw": camera_result.get("ocr_raw", "")[:200],
+                    "manufacturer": camera_result.get("medicine_info", {}).get("manufacturer"),
+                    "authenticity_verdict": camera_result.get("authenticity", {}).get("verdict"),
+                    "forensics_score": camera_result.get("forensics", {}).get("score"),
+                },
+                "note": "No reference images found",
+            }
+
+        model, transform = load_model()
+        ref_results = []
+        total_real = 0.0
+        total_fake = 0.0
+        downloaded = 0
+
+        print(f"[CAMERA] Downloading & analyzing {len(all_ref_urls)} reference images...")
+
+        for i, url in enumerate(all_ref_urls):
+            try:
+                req = urllib.request.Request(
+                    url,
+                    headers={"User-Agent": "Mozilla/5.0 (compatible; MedSecure/1.0)"},
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    ref_data = resp.read()
+
+                ref_img = Image.open(io.BytesIO(ref_data)).convert("RGB")
+                input_tensor = transform(ref_img).unsqueeze(0).to(DEVICE)
+
+                with torch.no_grad():
+                    outputs = model(input_tensor)
+                    probs = torch.nn.functional.softmax(outputs, dim=1)
+                    conf_val, pred_val = torch.max(probs, 1)
+
+                pred_label = "Real" if pred_val.item() == 1 else "Fake"
+                p_real = float(probs[0, 1].item() * 100)
+                p_fake = float(probs[0, 0].item() * 100)
+                total_real += p_real
+                total_fake += p_fake
+                downloaded += 1
+
+                ref_results.append({
+                    "url": url,
+                    "prediction": pred_label,
+                    "real_prob": round(p_real, 2),
+                    "fake_prob": round(p_fake, 2),
+                })
+                print(f"[CAMERA]   [{i+1}/{len(all_ref_urls)}] {pred_label} ({p_real:.1f}% real) <- {url.split('/')[-1][:40]}")
+
+            except Exception as exc:
+                print(f"[CAMERA]   [{i+1}/{len(all_ref_urls)}] SKIP: {exc} <- {url[:60]}")
+                continue
+
+        if downloaded == 0:
+            return {
+                "filename": file.filename or "camera-capture.jpg",
+                "prediction": "Fake",
+                "confidence": "0.00%",
+                "probabilities": {"fake": 100.0, "real": 0.0},
+                "analysis": generate_analysis("Fake", 0.0, 100.0, 0.0),
+                "device": str(DEVICE),
+                "source_url": matched_url,
+                "camera_result": {
+                    "medicine": camera_result.get("medicine"),
+                    "status": camera_result.get("status"),
+                    "confidence": camera_result.get("confidence"),
+                    "ocr_raw": camera_result.get("ocr_raw", "")[:200],
+                    "manufacturer": camera_result.get("medicine_info", {}).get("manufacturer"),
+                    "authenticity_verdict": camera_result.get("authenticity", {}).get("verdict"),
+                    "forensics_score": camera_result.get("forensics", {}).get("score"),
+                },
+                "note": "All reference image downloads failed",
+            }
+
+        # Aggregate ResNet50 results
+        avg_real = total_real / downloaded
+        avg_fake = total_fake / downloaded
+        real_count = sum(1 for r in ref_results if r["prediction"] == "Real")
+
+        print(f"[CAMERA] ResNet50: {real_count}/{downloaded} Real | avg_real={avg_real:.1f}%")
+
+        # ── Step 4: Claude Haiku final verdict ─────────────────────────────
+        # Combine ALL evidence: camera pipeline + ResNet50 refs + forensics
+        print("[CAMERA] Asking Claude Haiku for final verdict...")
+
+        import anthropic
+        claude_key = os.getenv("CLAUDE_API_KEY", "")
+        if not claude_key:
+            # Try loading from camera model .env
+            from dotenv import load_dotenv
+            env_path = os.path.join(_CAMERA_MODEL_DIR, ".env")
+            load_dotenv(env_path)
+            claude_key = os.getenv("CLAUDE_API_KEY", "")
+
+        camera_medicine = camera_result.get("medicine", "Unknown")
+        camera_status = camera_result.get("status", "unknown")
+        camera_confidence = camera_result.get("confidence", 0)
+        camera_clip = camera_result.get("clip_score", 0)
+        auth_verdict = camera_result.get("authenticity", {}).get("verdict", "unknown")
+        auth_score = camera_result.get("authenticity", {}).get("score", 0)
+        auth_flags = camera_result.get("authenticity", {}).get("red_flags", [])
+        forensics_score = camera_result.get("forensics", {}).get("score", 0)
+        ocr_text = camera_result.get("ocr_raw", "")[:300]
+
+        evidence = f"""Medicine identified: {camera_medicine}
+Manufacturer: {camera_result.get("medicine_info", {}).get("manufacturer", "Unknown")}
+
+Camera Pipeline Result:
+- Status: {camera_status} (confidence: {camera_confidence})
+- CLIP visual similarity to known product: {camera_clip}
+- Authenticity check: {auth_verdict} (score: {auth_score})
+- Red flags: {', '.join(auth_flags[:5]) if auth_flags else 'None'}
+- Forensics (print quality) score: {forensics_score}
+
+ResNet50 Reference Image Analysis:
+- {downloaded} reference images downloaded from Google
+- {real_count} classified as Real, {downloaded - real_count} classified as Fake
+- Average real probability: {avg_real:.1f}%
+- Per-image breakdown: {', '.join(f"{r['prediction']}({r['real_prob']:.0f}%)" for r in ref_results)}
+
+OCR text from packaging: {ocr_text}
+"""
+
+        final_prompt = """You are a pharmaceutical authentication AI making the FINAL verdict on whether a medicine is GENUINE (Real) or COUNTERFEIT (Fake).
+
+CRITICAL RULES — read carefully:
+1. "Real" means: this is a genuine medicine manufactured by the stated company. It may be expired, damaged, or old — it is STILL Real.
+2. "Fake" means: this is a counterfeit — someone manufactured a fraudulent copy to deceive consumers.
+3. OCR text from camera photos is ALWAYS garbled. Misspelled words, broken characters, inconsistent text = normal OCR noise, NOT evidence of counterfeiting.
+4. Expired medicine is REAL medicine that has passed its expiry date. Expiry does NOT mean fake.
+5. CLIP score > 0.55 means the packaging visually matches known genuine products — this is STRONG evidence of Real.
+6. Forensics score > 0.7 means professional pharmaceutical-grade printing — this is evidence of Real.
+7. If the majority of ResNet50 reference images say Real (> 50%), that supports Real.
+8. The ONLY things that indicate Fake are: completely wrong manufacturer, medicine that doesn't exist, packaging that looks nothing like any known product (CLIP < 0.4).
+
+EVIDENCE:
+""" + evidence + """
+
+Respond with ONLY a JSON object:
+{
+  "verdict": "Real" or "Fake",
+  "confidence_pct": <number 0-100>,
+  "reason": "<one clear sentence>"
+}"""
+
+        try:
+            client = anthropic.Anthropic(api_key=claude_key)
+            msg = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=256,
+                messages=[{"role": "user", "content": final_prompt}],
+            )
+            raw_verdict = msg.content[0].text.strip()
+            print(f"[CAMERA] Claude verdict raw: {raw_verdict[:200]}")
+
+            import json as json_mod
+            import re as re_mod
+            match = re_mod.search(r"```(?:json)?\s*([\s\S]+?)\s*```", raw_verdict)
+            verdict_data = json_mod.loads(match.group(1) if match else raw_verdict)
+
+            prediction = verdict_data.get("verdict", "Real")
+            confidence = float(verdict_data.get("confidence_pct", 50))
+            reason = verdict_data.get("reason", "")
+            prob_real = confidence if prediction == "Real" else 100 - confidence
+            prob_fake = 100 - prob_real
+
+            print(f"[CAMERA] === CLAUDE FINAL: {prediction} ({confidence:.1f}%) — {reason} ===")
+
+        except Exception as exc:
+            print(f"[CAMERA] Claude final verdict failed: {exc} — falling back to ResNet50 avg")
+            prediction = "Real" if avg_real > avg_fake else "Fake"
+            confidence = max(avg_real, avg_fake)
+            prob_real = avg_real
+            prob_fake = avg_fake
+            reason = f"Based on ResNet50 analysis: {real_count}/{downloaded} references classified as Real"
+
+        analysis = {
+            "summary": reason,
+            "reasons": [
+                f"Camera pipeline identified: {camera_medicine} — CLIP match {camera_clip:.2f}",
+                f"Authenticity check: {auth_verdict} (score {auth_score})",
+                f"Print quality forensics score: {forensics_score}",
+                f"ResNet50: {real_count}/{downloaded} reference images classified as Real ({avg_real:.1f}% avg)",
+                f"Final verdict by Claude AI: {prediction} at {confidence:.1f}% confidence",
+            ],
+            "risk_level": "low" if prediction == "Real" and confidence > 70 else ("medium" if confidence > 50 else "high"),
+        }
+
+        return {
+            "filename": file.filename or "camera-capture.jpg",
+            "prediction": prediction,
+            "confidence": f"{confidence:.2f}%",
+            "probabilities": {"fake": round(prob_fake, 2), "real": round(prob_real, 2)},
+            "analysis": analysis,
+            "device": str(DEVICE),
+            "source_url": matched_url,
+            "ref_breakdown": {
+                "total_refs": len(all_ref_urls),
+                "downloaded": downloaded,
+                "real_count": real_count,
+                "fake_count": downloaded - real_count,
+                "details": ref_results,
+            },
+            "camera_result": {
+                "medicine": camera_result.get("medicine"),
+                "status": camera_result.get("status"),
+                "confidence": camera_result.get("confidence"),
+                "ocr_raw": camera_result.get("ocr_raw", "")[:200],
+                "manufacturer": camera_result.get("medicine_info", {}).get("manufacturer"),
+                "authenticity_verdict": camera_result.get("authenticity", {}).get("verdict"),
+                "forensics_score": camera_result.get("forensics", {}).get("score"),
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Camera scan failed: {str(e)}")
+
 
 @app.get("/test", tags=["Testing"])
 async def test_accuracy():
@@ -295,7 +668,7 @@ async def test_accuracy():
                             predictions['FP'] += 1
                         
                         total += 1
-                    except:
+                    except Exception:
                         continue
         
         # Test Real images
@@ -321,7 +694,7 @@ async def test_accuracy():
                             predictions['FN'] += 1
                         
                         total += 1
-                    except:
+                    except Exception:
                         continue
         
         # Calculate metrics
@@ -376,7 +749,7 @@ if __name__ == '__main__':
     import sys
     if not os.path.isdir(FRONTEND_DIR) or "--build" in sys.argv:
         print("[BUILD] Building frontend...")
-        subprocess.run(["npm", "run", "build"], cwd=frontend_src, shell=True, check=True)
+        subprocess.run(["npm", "run", "build"], cwd=frontend_src, check=True)
         print("[OK] Frontend built successfully")
 
     print("[START] MedSecure running on http://localhost:8000")
