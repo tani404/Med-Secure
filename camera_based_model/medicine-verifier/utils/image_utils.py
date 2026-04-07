@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import io
-from typing import TYPE_CHECKING
+import time
 
 import aiohttp
 import requests
@@ -14,9 +14,6 @@ from PIL import Image
 
 from config import MAX_RETRIES, BACKOFF_BASE
 from utils.logger import get_logger
-
-if TYPE_CHECKING:
-    pass
 
 logger = get_logger(__name__)
 
@@ -50,7 +47,6 @@ def download_image(url: str) -> Image.Image:
                 "Download attempt %d/%d failed for %s – retrying in %.1fs: %s",
                 attempt + 1, MAX_RETRIES, url, wait, exc,
             )
-            import time
             time.sleep(wait)
     raise RuntimeError(f"Failed to download image from {url} after {MAX_RETRIES} attempts") from last_exc
 

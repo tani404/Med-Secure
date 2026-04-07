@@ -1,31 +1,144 @@
-# Dependencies
-node_modules/
-frontend/node_modules/
+# ═══════════════════════════════════════════════════════════════════
+# MedSecure - Comprehensive .gitignore
+# ═══════════════════════════════════════════════════════════════════
 
-# Environment variables
+# Environment variables (contains sensitive API keys & configs)
 .env
 .env.local
 .env.*.local
 
-# Build output
-frontend/dist/
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
 
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual Environments
 venv/
-.venv/
+venv_tf/
+venv_torch/
+ENV/
+env/
+.venv
 
-# Cache
-.cache/
-.debug_output/
-
-# IDE
+# IDE & Editors
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
 
 # OS
 .DS_Store
 Thumbs.db
 nul
+desktop.ini
+
+# Build & Cache
+.cache/
+.debug_output/
+*.cache/
+
+# Frontend builds
+frontend/dist/
+frontend/node_modules/
+
+# Smart Contracts
+smart-contracts/cache/
+smart-contracts/out/
+smart-contracts/broadcast/*/31337/
+smart-contracts/broadcast/**/dry-run/
+
+# Large model files (download separately)
+*.pth
+*.h5
+*.pkl
+*.safetensors
+*.bin
+archive*/
+test_dataset/
+
+# Code Review Graph
+.code-review-graph/
+graph.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+
+# Image files (all formats)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.webp
+*.svg
+*.tiff
+*.tif
+*.ico
+*.heic
+*.heif
+
+# Medicine/Medical data files
+*.med
+*.medication
+*.drug
+*.prescription
+*.pharm
+*.pharma
+*.pharmaceutical
+
+# User uploaded images & media
+uploads/
+media/
+images/user_uploads/
+temp_images/
+downloaded_images/
+
+# Document files (Word, Excel, PDF)
+*.docx
+*.xlsx
+*.pptx
+*.pdf
+*.doc
+*.xls
+*.ppt
+
+# OS specific
+.AppleDouble
+.LSOverride
+ehthumbs.db

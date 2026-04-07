@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 
-from serpapi import GoogleSearch
+from serpapi import Client as SerpApiClient
 
 from config import SERPAPI_KEY, TOP_K_IMAGES, MAX_RETRIES, BACKOFF_BASE
 from utils.logger import get_logger
@@ -32,21 +32,18 @@ def search_images(query: str, top_k: int = TOP_K_IMAGES) -> list[str]:
     if not SERPAPI_KEY:
         raise RuntimeError("SERPAPI_KEY is not set")
 
-    params = {
-        "engine": "google_images",
-        "q": query,
-        "api_key": SERPAPI_KEY,
-        "num": top_k,
-    }
-
     last_exc: Exception | None = None
     for attempt in range(MAX_RETRIES):
         try:
             logger.info(
                 "Image search attempt %d/%d for '%s'", attempt + 1, MAX_RETRIES, query
             )
-            search = GoogleSearch(params)
-            results = search.get_dict()
+            client = SerpApiClient(api_key=SERPAPI_KEY)
+            results = client.search(
+                engine="google_images",
+                q=query,
+                num=top_k,
+            )
 
             if "error" in results:
                 raise RuntimeError(f"SerpAPI error: {results['error']}")

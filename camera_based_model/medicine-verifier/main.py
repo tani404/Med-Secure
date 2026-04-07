@@ -4,9 +4,10 @@ Medicine Verification System — Entry Point & Orchestrator.
 
 Pipeline:
     Camera Image -> Preprocessing -> OCR (nemotron-ocr-v1, multi-rotation)
-    -> Query Builder (Gemma 4 31B IT) -> SerpAPI Image Search
+    -> Query Builder (Claude Haiku) -> SerpAPI Image Search
     -> Fetch Reference Images -> CLIP Embeddings -> Cosine Similarity
-    -> Confidence Scoring -> Final Output
+    -> Authenticity Check (Claude Haiku) + Forensics (print quality)
+    -> Final 4-signal Confidence Score -> Output
 
 Usage:
     python main.py --image ./test_medicine.jpg
@@ -32,9 +33,11 @@ from pipeline.ocr import run_ocr, OcrFailedException
 from pipeline.query_builder import build_query
 from pipeline.image_search import search_images
 from pipeline.clip_embedder import CLIPEmbedder
-from pipeline.similarity import find_best_match, score_to_status, compute_hybrid_confidence
+from pipeline.similarity import find_best_match, compute_final_score
+from pipeline.authenticity_checker import check_authenticity
+from pipeline.forensics import run_forensics
 from pipeline.fallback import fallback_clip_match
-from utils.image_utils import download_images_async
+from utils.image_utils import download_images_async, download_image_async
 from utils.logger import get_logger
 
 logger = get_logger("main")
@@ -55,11 +58,16 @@ async def _collect_reference_images(
     top_k: int,
     debug: bool,
     debug_dir: str,
+    embedder: "CLIPEmbedder",
 ) -> tuple[list[str], list]:
     """Search with primary + alt queries, download, and embed all references.
 
+    Args:
+        embedder: Shared CLIPEmbedder instance (avoids loading the model twice).
+
     Returns:
-        Tuple of (all_urls, all_embeddings).
+        Tuple of (ref_urls, ref_embeddings) where each URL corresponds to
+        the embedding at the same index.
     """
     all_urls: list[str] = []
     seen_urls: set[str] = set()
@@ -97,18 +105,26 @@ async def _collect_reference_images(
     if not all_urls:
         return [], []
 
-    # Download all reference images in parallel
-    ref_images = await download_images_async(all_urls)
+    # Download all reference images in parallel; track which URLs succeeded
+    import aiohttp
+    final_urls: list[str] = []
+    ref_images = []
+    async with aiohttp.ClientSession() as session:
+        raw_results = await asyncio.gather(
+            *[download_image_async(session, u) for u in all_urls],
+            return_exceptions=True,
+        )
+    for url, result in zip(all_urls, raw_results):
+        if isinstance(result, Exception):
+            logger.error("Skipping reference image %s: %s", url, result)
+        else:
+            final_urls.append(url)
+            ref_images.append(result)
+
     if not ref_images:
         return [], []
 
-    # Embed references
-    embedder = CLIPEmbedder()
     ref_embeddings = embedder.embed_images(ref_images)
-
-    # Keep only urls that successfully downloaded (same count as ref_images)
-    final_urls = all_urls[: len(ref_images)]
-
     return final_urls, ref_embeddings
 
 
@@ -142,7 +158,7 @@ async def verify_medicine(
     # ── Step 2: OCR (multi-rotation with LLM selection) ────────────────
     logger.info("Step 2  Running OCR (multi-rotation)")
     try:
-        ocr_text = run_ocr(image)
+        ocr_text = await run_ocr(image)
     except OcrFailedException as exc:
         logger.warning("OCR failed (%s) — falling back to direct CLIP match", exc)
         result = fallback_clip_match(image)
@@ -154,91 +170,130 @@ async def verify_medicine(
 
     # ── Step 3: Build search query (with Gemma medicine extraction) ────
     logger.info("Step 3  Building search query")
-    query = build_query(ocr_text)
-    alt_queries = getattr(build_query, "_last_alt_queries", [])
-    medicine_info = getattr(build_query, "_last_medicine_info", {})
-
-    medicine_name = medicine_info.get("medicine_name", query)
-    dosage = medicine_info.get("dosage", "")
-    form = medicine_info.get("form", "")
-    manufacturer = medicine_info.get("manufacturer")
+    query_info = await build_query(ocr_text)
+    query = query_info["primary_query"]
+    alt_queries = query_info["alt_queries"]
+    medicine_name = query_info["medicine_name"]
+    dosage = query_info["dosage"]
+    form = query_info["form"]
+    manufacturer = query_info["manufacturer"]
 
     if debug:
         _save_debug("query", {
             "primary_query": query,
             "alt_queries": alt_queries,
-            "medicine_info": medicine_info,
+            "medicine_info": query_info,
             "ocr_text": ocr_text,
         }, debug_dir)
 
     # ── Step 4: Check cache ─────────────────────────────────────────────
     logger.info("Step 4  Checking cache")
-    cache = CacheManager()
-    cache_hit = cache.get(query)
 
-    if cache_hit:
-        ref_urls: list[str] = cache_hit["urls"]
-        ref_embeddings: list = cache_hit["embeddings"]
-        logger.info("Using %d cached reference embeddings", len(ref_embeddings))
-    else:
-        # ── Step 5+6: Search, download & embed references ──────────────
-        logger.info("Step 5-6  Searching, downloading & embedding references")
-        ref_urls, ref_embeddings = await _collect_reference_images(
-            query, alt_queries, TOP_K_IMAGES, debug, debug_dir,
+    # Create the single CLIPEmbedder instance used for both reference and input
+    embedder = CLIPEmbedder()
+
+    cache = CacheManager()
+    try:
+        cache_hit = cache.get(query)
+
+        if cache_hit:
+            ref_urls: list[str] = cache_hit["urls"]
+            ref_embeddings: list = cache_hit["embeddings"]
+            logger.info("Using %d cached reference embeddings", len(ref_embeddings))
+        else:
+            # ── Step 5+6: Search, download & embed references ──────────────
+            logger.info("Step 5-6  Searching, downloading & embedding references")
+            ref_urls, ref_embeddings = await _collect_reference_images(
+                query, alt_queries, TOP_K_IMAGES, debug, debug_dir, embedder,
+            )
+
+            if not ref_urls:
+                logger.warning("No reference images found for any query")
+                return {
+                    "medicine": " ".join(filter(None, [medicine_name, dosage or None, form])).strip(),
+                    "confidence": 0.0,
+                    "status": "rejected",
+                    "matched_reference": None,
+                    "ocr_raw": ocr_text,
+                    "note": "No reference images found via image search",
+                    "pipeline_time_s": round(time.perf_counter() - t0, 3),
+                }
+
+            cache.set(query, ref_urls, ref_embeddings)
+
+        # ── Step 7: Embed input image ───────────────────────────────────────
+        logger.info("Step 7  Embedding input image")
+        input_embedding = embedder.embed_image(image)
+
+        # ── Step 8: Similarity & scoring ────────────────────────────────────
+        logger.info("Step 8  Computing similarity")
+        clip_score, best_idx = find_best_match(input_embedding, ref_embeddings)
+        best_ref_url = ref_urls[best_idx] if best_idx < len(ref_urls) else ""
+
+        # ── Step 9: Authenticity check + Forensics (run in parallel) ───────
+        logger.info("Step 9  Running authenticity check + packaging forensics")
+        loop = asyncio.get_event_loop()
+        auth_result, forensics_result = await asyncio.gather(
+            check_authenticity(ocr_text),
+            loop.run_in_executor(None, run_forensics, image),
         )
 
-        if not ref_urls:
-            logger.warning("No reference images found for any query")
-            return {
-                "medicine": f"{medicine_name} {dosage} {form}".strip(),
-                "confidence": 0.0,
-                "status": "rejected",
-                "matched_reference": None,
+        if debug:
+            _save_debug("authenticity", auth_result, debug_dir)
+            _save_debug("forensics", forensics_result, debug_dir)
+
+        # ── Step 10: Final 4-signal confidence score ────────────────────────
+        logger.info("Step 10  Computing final confidence (4 signals)")
+        confidence, status = compute_final_score(
+            clip_score=clip_score,
+            medicine_name=medicine_name,
+            ref_url=best_ref_url,
+            all_ref_urls=ref_urls,
+            authenticity_score=auth_result["authenticity_score"],
+            forensics_score=forensics_result["forensics_score"],
+        )
+
+        medicine_label = " ".join(filter(None, [medicine_name, dosage or None, form])).strip()
+
+        result = {
+                "medicine": medicine_label,
+                "confidence": round(confidence, 4),
+                "clip_score": round(clip_score, 4),
+                "status": status,
+                "matched_reference": best_ref_url or None,
+                "all_ref_urls": ref_urls,
                 "ocr_raw": ocr_text,
-                "note": "No reference images found via image search",
+                "medicine_info": {
+                    "name": medicine_name,
+                    "dosage": dosage,
+                    "form": form,
+                    "manufacturer": manufacturer,
+                },
+                "authenticity": {
+                    "score": auth_result["authenticity_score"],
+                    "verdict": auth_result["verdict"],
+                    "summary": auth_result["summary"],
+                    "red_flags": auth_result["red_flags"],
+                    "green_flags": auth_result["green_flags"],
+                },
+                "forensics": {
+                    "score": forensics_result["forensics_score"],
+                    "findings": forensics_result["findings"],
+                    "sharpness": forensics_result["sharpness"],
+                    "color_uniformity": forensics_result["color_uniformity"],
+                    "noise": forensics_result["noise"],
+                    "contrast": forensics_result["contrast"],
+                },
                 "pipeline_time_s": round(time.perf_counter() - t0, 3),
             }
 
-        cache.set(query, ref_urls, ref_embeddings)
+        if debug:
+            _save_debug("final_result", result, debug_dir)
 
-    # ── Step 7: Embed input image ───────────────────────────────────────
-    logger.info("Step 7  Embedding input image")
-    embedder = CLIPEmbedder()
-    input_embedding = embedder.embed_image(image)
-
-    # ── Step 8: Similarity & scoring ────────────────────────────────────
-    logger.info("Step 8  Computing similarity")
-    clip_score, best_idx = find_best_match(input_embedding, ref_embeddings)
-    best_ref_url = ref_urls[best_idx] if best_idx < len(ref_urls) else ""
-
-    # Hybrid confidence: CLIP visual (60%) + text match in URL (40%)
-    confidence = compute_hybrid_confidence(clip_score, medicine_name, best_ref_url, ref_urls)
-    status = score_to_status(confidence)
-
-    medicine_label = f"{medicine_name} {dosage} {form}".strip()
-
-    result = {
-        "medicine": medicine_label,
-        "confidence": round(confidence, 4),
-        "clip_score": round(clip_score, 4),
-        "status": status,
-        "matched_reference": best_ref_url or None,
-        "ocr_raw": ocr_text,
-        "medicine_info": {
-            "name": medicine_name,
-            "dosage": dosage,
-            "form": form,
-            "manufacturer": manufacturer,
-        },
-        "pipeline_time_s": round(time.perf_counter() - t0, 3),
-    }
-
-    if debug:
-        _save_debug("final_result", result, debug_dir)
-
-    cache.close()
-    logger.info("Pipeline complete in %.2fs", result["pipeline_time_s"])
-    return result
+        logger.info("Pipeline complete in %.2fs", result["pipeline_time_s"])
+        return result
+    finally:
+        cache.close()
 
 
 # ── CLI ─────────────────────────────────────────────────────────────────────
@@ -291,8 +346,36 @@ def _print_result(result: dict, as_json: bool = False) -> None:
     if info.get("manufacturer"):
         print(f"  Manufacturer: {info['manufacturer']}")
 
+    print(f"  CLIP Score  : {result.get('clip_score', 0.0):.4f}")
     print(f"  Reference   : {result.get('matched_reference', 'N/A')}")
     print(f"  OCR Raw     : {result.get('ocr_raw', 'N/A')[:120]}")
+
+    auth = result.get("authenticity", {})
+    if auth:
+        auth_colour = {"authentic": "\033[92m", "suspicious": "\033[93m", "likely_fake": "\033[91m"}
+        auth_badge = auth_colour.get(auth.get("verdict", ""), "") + auth.get("verdict", "?").upper() + reset
+        print(f"  Auth Verdict: {auth_badge}  (score={auth.get('score', 0):.4f})")
+        if auth.get("red_flags"):
+            for flag in auth["red_flags"]:
+                print(f"    \033[91m[!] {flag}\033[0m")
+        if auth.get("green_flags"):
+            for flag in auth["green_flags"]:
+                print(f"    \033[92m[+] {flag}\033[0m")
+        if auth.get("summary"):
+            print(f"  Auth Summary: {auth['summary']}")
+
+    forensics = result.get("forensics", {})
+    if forensics:
+        fscore = forensics.get("score", 0.5)
+        f_colour = "\033[92m" if fscore >= 0.6 else ("\033[93m" if fscore >= 0.4 else "\033[91m")
+        print(f"  Forensics   : {f_colour}{fscore:.4f}\033[0m  "
+              f"(sharp={forensics.get('sharpness',0):.2f} "
+              f"color={forensics.get('color_uniformity',0):.2f} "
+              f"noise={forensics.get('noise',0):.2f} "
+              f"contrast={forensics.get('contrast',0):.2f})")
+        for finding in forensics.get("findings", []):
+            print(f"    \033[91m[!] {finding}\033[0m")
+
     if "pipeline_time_s" in result:
         print(f"  Time        : {result['pipeline_time_s']}s")
     if "note" in result:

@@ -14,15 +14,21 @@ load_dotenv()
 
 # ── API Keys ────────────────────────────────────────────────────────────────
 NVIDIA_API_KEY: str | None = os.getenv("NVIDIA_API_KEY")            # OCR model key
-NVIDIA_GEMMA_API_KEY: str | None = os.getenv("NVIDIA_GEMMA_API_KEY")  # Gemma query builder key
+NVIDIA_GEMMA_API_KEY: str | None = os.getenv("NVIDIA_GEMMA_API_KEY")  # unused, kept for compat
 GOOGLE_API_KEY: str | None = os.getenv("GOOGLE_API_KEY")
 GOOGLE_CSE_ID: str | None = os.getenv("GOOGLE_CSE_ID")
 SERPAPI_KEY: str | None = os.getenv("SERPAPI_KEY")
 
-# ── NVIDIA NIM endpoints ────────────────────────────────────────────────────
+# ── NVIDIA NIM endpoints (OCR only) ────────────────────────────────────────
 NVIDIA_NIM_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
 OCR_URL: str = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v1"
+
+# ── OCR rotation selector model (NVIDIA NIM) ───────────────────────────────
 QUERY_BUILDER_MODEL: str = "google/gemma-4-31b-it"
+
+# ── Claude query builder ────────────────────────────────────────────────────
+CLAUDE_API_KEY: str | None = os.getenv("CLAUDE_API_KEY")
+CLAUDE_HAIKU_MODEL: str = "claude-haiku-4-5-20251001"
 
 # ── CLIP ────────────────────────────────────────────────────────────────────
 CLIP_MODEL: str = "openai/clip-vit-base-patch32"

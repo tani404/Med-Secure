@@ -9,8 +9,11 @@ orientation.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
+import json
+import re
 import time
 
 import requests
@@ -29,6 +32,14 @@ from config import (
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _extract_json(raw: str) -> str:
+    """Strip optional markdown code fences and return the inner JSON string."""
+    match = re.search(r"```(?:json)?\s*([\s\S]+?)\s*```", raw)
+    if match:
+        return match.group(1)
+    return raw
 
 
 class OcrFailedException(Exception):
@@ -123,15 +134,7 @@ def _select_best_ocr_with_llm(candidates: dict[int, str]) -> tuple[int, str]:
         raw = response.choices[0].message.content.strip()
         logger.info("LLM rotation selection raw: %s", raw[:300])
 
-        # Parse the JSON response
-        import json
-        # Handle potential markdown code blocks
-        if "```" in raw:
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.strip()
-        result = json.loads(raw)
+        result = json.loads(_extract_json(raw))
         best_angle = int(result["best_rotation"])
         if best_angle in candidates:
             return best_angle, candidates[best_angle]
@@ -154,12 +157,46 @@ def _select_best_ocr_with_llm(candidates: dict[int, str]) -> tuple[int, str]:
     return best_angle, candidates[best_angle]
 
 
-def run_ocr(image: Image.Image) -> str:
+_PHARMA_KEYWORDS = [
+    "tablet", "capsule", "mg", "ml", "ip", "bp", "mfg", "exp", "batch",
+    "composition", "manufacturer", "store", "dosage", "strip", "each",
+]
+
+def _has_good_pharma_text(text: str, min_keywords: int = 3) -> bool:
+    """Return True if *text* contains enough pharmaceutical keywords."""
+    t = text.lower()
+    return sum(1 for kw in _PHARMA_KEYWORDS if kw in t) >= min_keywords
+
+
+def _ocr_one_rotation(angle: int, image: Image.Image) -> tuple[int, str]:
+    """OCR a single rotation with retries. Returns (angle, text) or (angle, '')."""
+    rotated = image.rotate(angle, expand=True) if angle != 0 else image
+    for attempt in range(MAX_RETRIES):
+        try:
+            text = _call_ocr_api(rotated)
+            if text.strip():
+                logger.info("Rotation %d° -> %d chars extracted", angle, len(text))
+            else:
+                logger.info("Rotation %d° -> empty text", angle)
+            return angle, text
+        except Exception as exc:
+            wait = BACKOFF_BASE * (2 ** attempt)
+            logger.warning(
+                "OCR rotation=%d° attempt %d failed: %s – retrying in %.1fs",
+                angle, attempt + 1, exc, wait,
+            )
+            time.sleep(wait)
+    return angle, ""
+
+
+async def run_ocr(image: Image.Image) -> str:
     """Run OCR on *image* trying all 4 rotations for maximum accuracy.
 
-    Uses Gemma LLM to intelligently select the correct orientation
-    from OCR results, ensuring accurate medicine name extraction even
-    from upside-down or rotated images.
+    Fast path: tries 0° first; if the result already has enough pharmaceutical
+    keywords, skips the remaining 3 rotations entirely (saves ~3 API calls).
+
+    Slow path: runs the remaining 3 rotations in parallel via a thread pool,
+    then uses the LLM to pick the best result.
 
     Args:
         image: Preprocessed PIL Image (RGB).
@@ -173,37 +210,40 @@ def run_ocr(image: Image.Image) -> str:
     if not NVIDIA_API_KEY:
         raise OcrFailedException("NVIDIA_API_KEY is not set")
 
-    rotations = [0, 180, 90, 270]
+    loop = asyncio.get_event_loop()
+
+    # ── Fast path: try 0° first ──────────────────────────────────────────
+    logger.info("OCR fast path: trying 0° rotation first")
+    angle0, text0 = await loop.run_in_executor(None, _ocr_one_rotation, 0, image)
+    if text0 and _has_good_pharma_text(text0):
+        logger.info("Fast path succeeded at 0° — skipping remaining rotations")
+        return text0
+
+    # ── Slow path: run remaining rotations in parallel ───────────────────
+    logger.info("Fast path inconclusive — running remaining rotations in parallel")
+    other_rotations = [180, 90, 270]
+    tasks = [
+        loop.run_in_executor(None, _ocr_one_rotation, angle, image)
+        for angle in other_rotations
+    ]
+    other_results = await asyncio.gather(*tasks)
+
     candidates: dict[int, str] = {}
-
-    for angle in rotations:
-        rotated = image.rotate(angle, expand=True) if angle != 0 else image
-
-        for attempt in range(MAX_RETRIES):
-            try:
-                logger.info("OCR rotation=%d° attempt %d/%d", angle, attempt + 1, MAX_RETRIES)
-                text = _call_ocr_api(rotated)
-                if text.strip():
-                    candidates[angle] = text
-                    logger.info("Rotation %d° -> %d chars extracted", angle, len(text))
-                else:
-                    logger.info("Rotation %d° -> empty text", angle)
-                break
-            except Exception as exc:
-                wait = BACKOFF_BASE * (2 ** attempt)
-                logger.warning(
-                    "OCR rotation=%d° attempt %d failed: %s – retrying in %.1fs",
-                    angle, attempt + 1, exc, wait,
-                )
-                time.sleep(wait)
+    if text0:
+        candidates[0] = text0
+    for angle, text in other_results:
+        if text:
+            candidates[angle] = text
 
     if not candidates:
         raise OcrFailedException("OCR returned empty text for all rotations")
 
     logger.info("Got OCR results for %d rotations: %s", len(candidates), list(candidates.keys()))
 
-    # Use LLM to pick the best rotation
-    best_angle, best_text = _select_best_ocr_with_llm(candidates)
+    # Use LLM to pick the best rotation (runs sync client in thread to avoid blocking)
+    best_angle, best_text = await loop.run_in_executor(
+        None, _select_best_ocr_with_llm, candidates
+    )
     logger.info("Selected rotation %d° as best (text length: %d)", best_angle, len(best_text))
 
     return best_text

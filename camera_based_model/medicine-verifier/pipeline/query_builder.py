@@ -1,28 +1,36 @@
 """
 Query builder: normalises messy OCR text into a clean Google image
-search query using Gemma 4 31B IT via NVIDIA NIM.
+search query using Claude Haiku via the Anthropic SDK.
 
 Returns both a primary query and alternative queries for robust searching.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
-import time
+import re
 
-from openai import OpenAI
+import anthropic
 
 from config import (
-    NVIDIA_API_KEY,
-    NVIDIA_GEMMA_API_KEY,
-    NVIDIA_NIM_BASE_URL,
-    QUERY_BUILDER_MODEL,
+    CLAUDE_API_KEY,
+    CLAUDE_HAIKU_MODEL,
     MAX_RETRIES,
     BACKOFF_BASE,
 )
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _extract_json(raw: str) -> str:
+    """Strip optional markdown code fences and return the inner JSON string."""
+    match = re.search(r"```(?:json)?\s*([\s\S]+?)\s*```", raw)
+    if match:
+        return match.group(1)
+    return raw
+
 
 SYSTEM_PROMPT = (
     "You are a pharmaceutical expert and text normalizer.\n"
@@ -50,48 +58,42 @@ SYSTEM_PROMPT = (
 )
 
 
-def build_query(ocr_text: str) -> str:
-    """Convert raw OCR text into a clean image-search query.
+async def build_query(ocr_text: str) -> dict:
+    """Convert raw OCR text into a clean image-search query using Claude Haiku.
 
     Args:
         ocr_text: Raw text returned by the OCR step.
 
     Returns:
-        A concise search query (typically 3–6 words).
+        A dict with keys: ``primary_query``, ``alt_queries``,
+        ``medicine_name``, ``dosage``, ``form``, ``manufacturer``.
 
     Raises:
         RuntimeError: If the API call fails after retries.
     """
-    api_key = NVIDIA_GEMMA_API_KEY or NVIDIA_API_KEY
-    if not api_key:
-        raise RuntimeError("NVIDIA_GEMMA_API_KEY (or NVIDIA_API_KEY) is not set")
+    if not CLAUDE_API_KEY:
+        raise RuntimeError("CLAUDE_API_KEY is not set")
 
-    client = OpenAI(base_url=NVIDIA_NIM_BASE_URL, api_key=api_key)
+    client = anthropic.AsyncAnthropic(api_key=CLAUDE_API_KEY)
 
     last_exc: Exception | None = None
     for attempt in range(MAX_RETRIES):
         try:
-            logger.info("Query-builder attempt %d/%d", attempt + 1, MAX_RETRIES)
-            response = client.chat.completions.create(
-                model=QUERY_BUILDER_MODEL,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": f"OCR text: {ocr_text}"},
-                ],
+            logger.info("Query-builder attempt %d/%d (Claude Haiku)", attempt + 1, MAX_RETRIES)
+
+            message = await client.messages.create(
+                model=CLAUDE_HAIKU_MODEL,
                 max_tokens=256,
-                temperature=0.1,
+                system=SYSTEM_PROMPT,
+                messages=[
+                    {"role": "user", "content": f"OCR text: {ocr_text}"}
+                ],
             )
-            raw = response.choices[0].message.content.strip()
+
+            raw = message.content[0].text.strip()
             logger.info("Query-builder raw response: %s", raw[:300])
 
-            # Parse JSON response
-            if "```" in raw:
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-                raw = raw.strip()
-
-            data = json.loads(raw)
+            data = json.loads(_extract_json(raw))
             query = data.get("primary_query", "").strip().strip('"').strip("'")
             alt_queries = data.get("alt_queries", [])
 
@@ -100,16 +102,21 @@ def build_query(ocr_text: str) -> str:
 
             logger.info("Primary query: '%s'", query)
             logger.info("Alt queries: %s", alt_queries)
-            logger.info("Medicine identified: %s %s %s",
-                        data.get("medicine_name", "?"),
-                        data.get("dosage", "?"),
-                        data.get("form", "?"))
+            logger.info(
+                "Medicine identified: %s %s %s",
+                data.get("medicine_name", "?"),
+                data.get("dosage", "?"),
+                data.get("form", "?"),
+            )
 
-            # Store alt queries as an attribute for the orchestrator to use
-            build_query._last_alt_queries = alt_queries
-            build_query._last_medicine_info = data
-
-            return query
+            return {
+                "primary_query": query,
+                "alt_queries": alt_queries,
+                "medicine_name": data.get("medicine_name", query),
+                "dosage": data.get("dosage", ""),
+                "form": data.get("form", ""),
+                "manufacturer": data.get("manufacturer"),
+            }
 
         except Exception as exc:
             last_exc = exc
@@ -118,13 +125,8 @@ def build_query(ocr_text: str) -> str:
                 "Query-builder attempt %d failed: %s – retrying in %.1fs",
                 attempt + 1, exc, wait,
             )
-            time.sleep(wait)
+            await asyncio.sleep(wait)
 
     raise RuntimeError(
         f"Query builder failed after {MAX_RETRIES} attempts"
     ) from last_exc
-
-
-# Initialise attributes
-build_query._last_alt_queries = []
-build_query._last_medicine_info = {}
