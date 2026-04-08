@@ -518,15 +518,22 @@ OCR text from packaging: {ocr_text}
 
         final_prompt = """You are a pharmaceutical authentication AI making the FINAL verdict on whether a medicine is GENUINE (Real) or COUNTERFEIT (Fake).
 
-CRITICAL RULES — read carefully:
+CRITICAL RULES — read these BEFORE looking at the evidence:
 1. "Real" means: this is a genuine medicine manufactured by the stated company. It may be expired, damaged, or old — it is STILL Real.
 2. "Fake" means: this is a counterfeit — someone manufactured a fraudulent copy to deceive consumers.
-3. OCR text from camera photos is ALWAYS garbled. Misspelled words, broken characters, inconsistent text = normal OCR noise, NOT evidence of counterfeiting.
-4. Expired medicine is REAL medicine that has passed its expiry date. Expiry does NOT mean fake.
-5. CLIP score > 0.55 means the packaging visually matches known genuine products — this is STRONG evidence of Real.
-6. Forensics score > 0.7 means professional pharmaceutical-grade printing — this is evidence of Real.
+3. **OCR text from camera photos is ALWAYS garbled.** Misspelled manufacturer names, broken addresses, garbled dosage instructions, missing batch/expiry info = NORMAL OCR NOISE, NOT counterfeiting. NEVER use OCR text quality as evidence of Fake.
+4. Expired medicine is REAL medicine. Expiry does NOT mean fake.
+5. **CLIP score > 0.55** means the packaging VISUALLY MATCHES known genuine products — this is the STRONGEST signal. If CLIP > 0.55, default to Real unless there is overwhelming evidence otherwise.
+6. **Forensics score > 0.6** means professional pharmaceutical-grade printing — strong evidence of Real.
 7. If the majority of ResNet50 reference images say Real (> 50%), that supports Real.
-8. The ONLY things that indicate Fake are: completely wrong manufacturer, medicine that doesn't exist, packaging that looks nothing like any known product (CLIP < 0.4).
+8. **Ignore ALL red flags that are about text quality** (misspellings, garbled names, missing text, unreadable addresses). These are OCR problems, not counterfeiting.
+9. The ONLY things that should make you say Fake: the packaging looks COMPLETELY different from any known product (CLIP < 0.4), OR the medicine name does not exist at all, OR forensics shows amateur/non-pharmaceutical printing (< 0.3).
+
+DECISION PRIORITY (follow this order):
+- CLIP > 0.55 AND forensics > 0.6 → Real (high confidence)
+- CLIP > 0.55 AND majority ResNet Real → Real
+- CLIP < 0.4 AND forensics < 0.3 → Fake
+- Otherwise → Real with moderate confidence (benefit of the doubt)
 
 EVIDENCE:
 """ + evidence + """
@@ -535,13 +542,13 @@ Respond with ONLY a JSON object:
 {
   "verdict": "Real" or "Fake",
   "confidence_pct": <number 0-100>,
-  "reason": "<one clear sentence>"
+  "reason": "<one clear sentence — do NOT cite OCR text errors as a reason>"
 }"""
 
         try:
             client = anthropic.Anthropic(api_key=claude_key)
             msg = client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=os.getenv("CLAUDE_HAIKU_MODEL", "claude-haiku-4-5-20251001"),
                 max_tokens=256,
                 messages=[{"role": "user", "content": final_prompt}],
             )
