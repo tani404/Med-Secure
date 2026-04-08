@@ -46,26 +46,28 @@ class TestCosineSimilarity:
 # ── score_to_status ─────────────────────────────────────────────────────────
 
 class TestScoreToStatus:
+    """Tests aligned with config.py thresholds: verified=0.60, possible=0.45."""
+
     def test_verified(self):
         assert score_to_status(0.90) == "verified"
-        assert score_to_status(0.85) == "verified"
+        assert score_to_status(0.60) == "verified"
 
     def test_possible(self):
-        assert score_to_status(0.80) == "possible"
-        assert score_to_status(0.70) == "possible"
+        assert score_to_status(0.55) == "possible"
+        assert score_to_status(0.45) == "possible"
 
     def test_rejected(self):
-        assert score_to_status(0.69) == "rejected"
+        assert score_to_status(0.44) == "rejected"
         assert score_to_status(0.0) == "rejected"
         assert score_to_status(-0.5) == "rejected"
 
     def test_boundary_verified(self):
-        assert score_to_status(0.85) == "verified"
-        assert score_to_status(0.8499) == "possible"
+        assert score_to_status(0.60) == "verified"
+        assert score_to_status(0.5999) == "possible"
 
     def test_boundary_possible(self):
-        assert score_to_status(0.70) == "possible"
-        assert score_to_status(0.6999) == "rejected"
+        assert score_to_status(0.45) == "possible"
+        assert score_to_status(0.4499) == "rejected"
 
 
 # ── find_best_match ─────────────────────────────────────────────────────────

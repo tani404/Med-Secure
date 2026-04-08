@@ -36,7 +36,11 @@ def download_image(url: str) -> Image.Image:
     last_exc: Exception | None = None
     for attempt in range(MAX_RETRIES):
         try:
-            resp = requests.get(url, timeout=15)
+            resp = requests.get(
+                url,
+                timeout=15,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; MedSecure/1.0)"},
+            )
             resp.raise_for_status()
             img = Image.open(io.BytesIO(resp.content)).convert("RGB")
             return img
@@ -67,7 +71,8 @@ async def download_image_async(session: aiohttp.ClientSession, url: str) -> Imag
     last_exc: Exception | None = None
     for attempt in range(MAX_RETRIES):
         try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+            headers = {"User-Agent": "Mozilla/5.0 (compatible; MedSecure/1.0)"}
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15), headers=headers) as resp:
                 resp.raise_for_status()
                 data = await resp.read()
                 img = Image.open(io.BytesIO(data)).convert("RGB")

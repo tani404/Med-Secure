@@ -2,10 +2,15 @@
 Image search via SerpAPI (Google Images).
 
 Returns the top-K image URLs for a given query string.
+
+NOTE: This module exposes both a sync ``search_images`` (for use inside
+``run_in_executor``) and an async ``search_images_async`` wrapper that
+offloads to a thread so it never blocks the event loop.
 """
 
 from __future__ import annotations
 
+import asyncio
 import time
 
 from serpapi import Client as SerpApiClient
@@ -15,9 +20,15 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Per-request timeout for SerpAPI calls (seconds).
+_SERPAPI_TIMEOUT = 30
+
 
 def search_images(query: str, top_k: int = TOP_K_IMAGES) -> list[str]:
     """Search Google Images via SerpAPI for *query* and return image URLs.
+
+    This is a **synchronous** function.  When called from an async context,
+    use :func:`search_images_async` instead to avoid blocking the event loop.
 
     Args:
         query: The search query (ideally produced by :func:`build_query`).
@@ -43,6 +54,7 @@ def search_images(query: str, top_k: int = TOP_K_IMAGES) -> list[str]:
                 engine="google_images",
                 q=query,
                 num=top_k,
+                timeout=_SERPAPI_TIMEOUT,
             )
 
             if "error" in results:
@@ -65,3 +77,9 @@ def search_images(query: str, top_k: int = TOP_K_IMAGES) -> list[str]:
     raise RuntimeError(
         f"Image search failed after {MAX_RETRIES} attempts"
     ) from last_exc
+
+
+async def search_images_async(query: str, top_k: int = TOP_K_IMAGES) -> list[str]:
+    """Async wrapper — runs :func:`search_images` in a thread pool."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, search_images, query, top_k)

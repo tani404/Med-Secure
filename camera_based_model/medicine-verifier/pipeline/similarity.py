@@ -186,10 +186,10 @@ def compute_final_score(
     """Combine all four signals into a final confidence score and status.
 
     Signal weights:
-      - CLIP visual similarity : 35%
+      - CLIP visual similarity : 45%
       - Text match (URL)       : 15%
-      - Authenticity (text)    : 30%
-      - Forensics (print)      : 20%
+      - Authenticity (text)    : 15%  (low — OCR noise makes this unreliable)
+      - Forensics (print)      : 25%
 
     A strong negative in any single signal (< 0.3) triggers a penalty
     so a fake that passes three checks but fails one is still flagged.
@@ -222,16 +222,15 @@ def compute_final_score(
     base = (
         clip_score          * 0.45 +
         text_score          * 0.15 +
-        authenticity_score  * 0.20 +
-        forensics_score     * 0.20
+        authenticity_score  * 0.15 +
+        forensics_score     * 0.25
     )
 
-    # Hard penalty ONLY when BOTH visual signals AND authenticity are all bad —
-    # meaning even the image itself looks wrong, not just the OCR text.
+    # Hard penalty ONLY when BOTH visual signals are bad — meaning the image
+    # itself looks wrong (not just garbled OCR text).
+    # Authenticity alone should NEVER cap the score because OCR noise is
+    # routinely misinterpreted as counterfeiting signals.
     if clip_score < 0.35 and forensics_score < 0.35:
-        base = min(base, 0.44)
-    elif authenticity_score < 0.25 and clip_score < 0.45:
-        # Auth screams fake AND visual match is weak — cap it
         base = min(base, 0.44)
 
     final = round(min(1.0, max(0.0, base)), 4)

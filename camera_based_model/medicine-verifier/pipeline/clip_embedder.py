@@ -53,7 +53,7 @@ class CLIPEmbedder:
         return embedding
 
     def embed_images(self, images: list[Image.Image]) -> list[np.ndarray]:
-        """Embed a batch of images.
+        """Embed a batch of images using CLIP's native batching.
 
         Args:
             images: List of PIL Images.
@@ -61,4 +61,21 @@ class CLIPEmbedder:
         Returns:
             List of L2-normalised numpy arrays.
         """
-        return [self.embed_image(img) for img in images]
+        if not images:
+            return []
+
+        # Process all images in a single batched forward pass
+        inputs = self._processor(images=images, return_tensors="pt", padding=True)
+        pixel_values = inputs["pixel_values"].to(self._device)
+
+        with torch.no_grad():
+            vision_outputs = self._model.vision_model(pixel_values=pixel_values)
+            pooled = vision_outputs.pooler_output
+            image_embeds = self._model.visual_projection(pooled)
+
+        # L2 normalise each embedding
+        image_embeds = image_embeds / image_embeds.norm(dim=-1, keepdim=True)
+        embeddings = image_embeds.cpu().numpy().astype(np.float32)
+
+        logger.debug("Batch-embedded %d images -> shape %s", len(images), embeddings.shape)
+        return [embeddings[i] for i in range(len(images))]

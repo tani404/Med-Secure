@@ -17,12 +17,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
 
 import anthropic
 
 from config import CLAUDE_API_KEY, CLAUDE_HAIKU_MODEL, MAX_RETRIES, BACKOFF_BASE
 from utils.logger import get_logger
+from utils.text import extract_json as _extract_json
 
 logger = get_logger(__name__)
 
@@ -36,18 +36,32 @@ IMPORTANT CONTEXT: The text you receive has been extracted by an OCR system from
 
 DO NOT flag ordinary OCR noise as a red flag. Only flag things that are suspicious even AFTER accounting for OCR errors.
 
-Check the following — be lenient on OCR noise, strict on logical inconsistencies:
+CRITICAL — What is NOT a red flag (these are normal OCR artefacts from camera photos):
+- Misspelled manufacturer names (e.g. "SPECTRA SERAPEUTIE" = "Spectra Therapeutics")
+- Garbled addresses, city names, or pin codes
+- Missing or unreadable batch/expiry dates (may be on the other side of the package)
+- Nonsensical fragments in dosage instructions (e.g. "As directed by the pays" = "physician")
+- Broken characters, substituted letters, or merged/split words
+- Text that appears corrupted or partially unreadable
+ALL of the above are expected from camera OCR and must be IGNORED.
+
+Check ONLY these — and ONLY flag clear logical impossibilities:
 1. **Dosage contradiction**: Is the same product labelled with two LOGICALLY incompatible strengths (e.g. 5mg AND 500mg on the same pack)?
-2. **MFG / EXP date logic**: If both dates are readable, is the shelf-life gap realistic (6 months – 5 years)? Is the product clearly expired?
-3. **Regulatory marks**: Are there any regulatory indicators (WHO-GMP, FSSAI, Mfg. Lic. No., CDSCO, IP, BP, USP)? Absence is mildly suspicious, not conclusive.
-4. **Manufacturer coherence**: Is a manufacturer name present? Does the address contain a recognisable city/country?
-5. **Structural completeness**: Does the label have at least SOME of: product name, strength, form, manufacturer, storage instructions? A completely empty label is suspicious.
-6. **Price anomaly**: If MRP is visible, is it wildly implausible (e.g. ₹1 for prescription medicine)?
+2. **MFG / EXP date logic**: If both dates are clearly readable, is the shelf-life gap unrealistic (> 5 years or < 1 month)?
+3. **Structural completeness**: Does the label have a recognisable product name AND either a strength or manufacturer? If yes, it passes.
+4. **Price anomaly**: If MRP is visible, is it wildly implausible (e.g. ₹1 for prescription medicine)?
+
+Things that are MILDLY suspicious at most (do NOT reduce score below 0.7 for these alone):
+- Missing regulatory marks (may be on the other side)
+- Missing batch/expiry dates (may be on the other side)
+- Manufacturer address not fully readable
 
 Scoring guide:
-- 0.7–1.0: All key fields present, no logical contradictions → authentic
-- 0.5–0.7: Some fields missing or minor issues → suspicious
-- 0.0–0.5: Multiple logical contradictions or critical fields absent → likely_fake
+- 0.7–1.0: Product name + strength identifiable, no logical contradictions → authentic (THIS IS THE DEFAULT — most real medicine photos should land here)
+- 0.5–0.7: Genuine logical contradictions present → suspicious
+- 0.0–0.5: Product is completely unidentifiable OR has multiple impossible contradictions → likely_fake
+
+When in doubt, score HIGHER. Camera OCR is unreliable — penalising garbled text punishes real medicines.
 
 Respond ONLY with a JSON object — no explanation:
 {
@@ -95,8 +109,7 @@ async def check_authenticity(ocr_text: str) -> dict:
             logger.info("Authenticity raw response: %s", raw[:400])
 
             # Strip markdown fences if present
-            match = re.search(r"```(?:json)?\s*([\s\S]+?)\s*```", raw)
-            data = json.loads(match.group(1) if match else raw)
+            data = json.loads(_extract_json(raw))
 
             score = float(data.get("authenticity_score", 0.5))
             score = max(0.0, min(1.0, score))  # clamp

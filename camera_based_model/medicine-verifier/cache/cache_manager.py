@@ -22,10 +22,14 @@ logger = get_logger(__name__)
 class CacheManager:
     """Thin wrapper around :class:`diskcache.Cache` keyed by query string."""
 
-    def __init__(self, cache_dir: str = CACHE_DIR, ttl: int = CACHE_TTL) -> None:
-        self._cache = Cache(cache_dir)
+    # 500 MB default max size to prevent unbounded disk growth.
+    DEFAULT_SIZE_LIMIT = 500 * 1024 * 1024
+
+    def __init__(self, cache_dir: str = CACHE_DIR, ttl: int = CACHE_TTL,
+                 size_limit: int = DEFAULT_SIZE_LIMIT) -> None:
+        self._cache = Cache(cache_dir, size_limit=size_limit)
         self._ttl = ttl
-        logger.info("Cache initialised at %s (TTL=%ds)", cache_dir, ttl)
+        logger.info("Cache initialised at %s (TTL=%ds, max=%dMB)", cache_dir, ttl, size_limit // (1024 * 1024))
 
     # ── helpers ──────────────────────────────────────────────────────────
     @staticmethod
