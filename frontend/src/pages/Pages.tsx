@@ -567,9 +567,9 @@ export function LandingPage() {
         <StaggerList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" stagger={0.1}>
           {([
             ["document_scanner", "OCR Extraction", "NVIDIA Nemotron reads medicine text from camera photos with multi-rotation for any angle.", "bg-blue-50 text-blue-600"],
-            ["psychology", "Claude AI Analysis", "Identifies medicine name, dosage, and manufacturer from garbled OCR text.", "bg-purple-50 text-purple-600"],
+            ["psychology", "AI Analysis", "Identifies medicine name, dosage, and manufacturer from garbled OCR text.", "bg-purple-50 text-purple-600"],
             ["image_search", "CLIP Visual Match", "Compares your photo against Google reference images using neural embeddings.", "bg-emerald-50 text-emerald-600"],
-            ["fingerprint", "Authenticity Check", "Claude Haiku validates batch numbers, dates, and license formats for logical consistency.", "bg-amber-50 text-amber-600"],
+            ["fingerprint", "Authenticity Check", "Validates batch numbers, dates, and license formats for logical consistency.", "bg-amber-50 text-amber-600"],
             ["blur_on", "Forensic Analysis", "Detects print quality anomalies: sharpness, color banding, noise — signs of counterfeit printing.", "bg-rose-50 text-rose-600"],
             ["neurology", "ResNet50 Deep Scan", "Downloads all reference images and classifies each through a trained counterfeit detection model.", "bg-indigo-50 text-indigo-600"],
           ] as const).map(([icon, title, desc, colors]) => (
@@ -640,7 +640,7 @@ export function LandingPage() {
               ["2", "text_fields", "OCR + AI", "Extract and identify medicine details"],
               ["3", "travel_explore", "Search", "Find reference images from trusted sources"],
               ["4", "compare", "Compare", "CLIP + ResNet50 visual analysis"],
-              ["5", "verified", "Verdict", "Claude AI combines all signals for final result"],
+              ["5", "verified", "Verdict", "AI combines all signals for final result"],
             ] as const).map(([num, icon, title, desc]) => (
               <StaggerItem key={num}>
                 <div className="relative z-10 text-center">
@@ -783,7 +783,7 @@ export function LandingPage() {
               <div key={dup} className="flex gap-12 items-center shrink-0">
                 {([
                   "Ethereum", "Solidity", "Foundry", "React", "TypeScript", "Vite",
-                  "FastAPI", "PyTorch", "ResNet50", "CLIP", "Claude AI", "NVIDIA OCR",
+                  "FastAPI", "PyTorch", "ResNet50", "CLIP", "NVIDIA OCR",
                   "SerpAPI", "Wagmi", "RainbowKit", "TailwindCSS", "Framer Motion",
                 ]).map((tech) => (
                   <span key={`${dup}-${tech}`} className="text-slate-300 font-label text-sm font-medium tracking-wide">{tech}</span>
