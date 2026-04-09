@@ -26,7 +26,7 @@ OCR_URL: str = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v1"
 # ── OCR rotation selector model (NVIDIA NIM) ───────────────────────────────
 QUERY_BUILDER_MODEL: str = "google/gemma-4-31b-it"
 
-# ── Claude query builder ────────────────────────────────────────────────────
+# ── Anthropic query builder ─────────────────────────────────────────────────
 CLAUDE_API_KEY: str | None = os.getenv("CLAUDE_API_KEY")
 CLAUDE_HAIKU_MODEL: str = "claude-haiku-4-5-20251001"
 

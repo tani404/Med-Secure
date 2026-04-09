@@ -1,5 +1,5 @@
 """
-Authenticity checker: uses Claude Haiku to detect fake medicine by
+Authenticity checker: uses LLM to detect fake medicine by
 analysing internal consistency of OCR text.
 
 Checks:
@@ -75,7 +75,7 @@ Respond ONLY with a JSON object — no explanation:
 
 
 async def check_authenticity(ocr_text: str) -> dict:
-    """Analyse OCR text for counterfeiting signals using Claude Haiku.
+    """Analyse OCR text for counterfeiting signals using LLM.
 
     Args:
         ocr_text: Raw OCR text from the medicine package.

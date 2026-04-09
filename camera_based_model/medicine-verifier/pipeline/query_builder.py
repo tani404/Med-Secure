@@ -1,6 +1,6 @@
 """
 Query builder: normalises messy OCR text into a clean Google image
-search query using Claude Haiku via the Anthropic SDK.
+search query using LLM via the Anthropic SDK.
 
 Returns both a primary query and alternative queries for robust searching.
 """
@@ -51,7 +51,7 @@ SYSTEM_PROMPT = (
 
 
 async def build_query(ocr_text: str) -> dict:
-    """Convert raw OCR text into a clean image-search query using Claude Haiku.
+    """Convert raw OCR text into a clean image-search query using LLM.
 
     Args:
         ocr_text: Raw text returned by the OCR step.
@@ -71,7 +71,7 @@ async def build_query(ocr_text: str) -> dict:
     last_exc: Exception | None = None
     for attempt in range(MAX_RETRIES):
         try:
-            logger.info("Query-builder attempt %d/%d (Claude Haiku)", attempt + 1, MAX_RETRIES)
+            logger.info("Query-builder attempt %d/%d (LLM)", attempt + 1, MAX_RETRIES)
 
             message = await client.messages.create(
                 model=CLAUDE_HAIKU_MODEL,
