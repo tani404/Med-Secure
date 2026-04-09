@@ -474,9 +474,9 @@ async def predict_camera(file: UploadFile = File(...)):
 
         print(f"[CAMERA] ResNet50: {real_count}/{downloaded} Real | avg_real={avg_real:.1f}%")
 
-        # ── Step 4: Claude Haiku final verdict ─────────────────────────────
+        # ── Step 4: LLM final verdict ──────────────────────────────────────
         # Combine ALL evidence: camera pipeline + ResNet50 refs + forensics
-        print("[CAMERA] Asking Claude Haiku for final verdict...")
+        print("[CAMERA] Asking LLM for final verdict...")
 
         import anthropic
         claude_key = os.getenv("CLAUDE_API_KEY", "")
@@ -553,7 +553,7 @@ Respond with ONLY a JSON object:
                 messages=[{"role": "user", "content": final_prompt}],
             )
             raw_verdict = msg.content[0].text.strip()
-            print(f"[CAMERA] Claude verdict raw: {raw_verdict[:200]}")
+            print(f"[CAMERA] LLM verdict raw: {raw_verdict[:200]}")
 
             import json as json_mod
             import re as re_mod
@@ -566,10 +566,10 @@ Respond with ONLY a JSON object:
             prob_real = confidence if prediction == "Real" else 100 - confidence
             prob_fake = 100 - prob_real
 
-            print(f"[CAMERA] === CLAUDE FINAL: {prediction} ({confidence:.1f}%) — {reason} ===")
+            print(f"[CAMERA] === LLM FINAL: {prediction} ({confidence:.1f}%) — {reason} ===")
 
         except Exception as exc:
-            print(f"[CAMERA] Claude final verdict failed: {exc} — falling back to ResNet50 avg")
+            print(f"[CAMERA] LLM final verdict failed: {exc} — falling back to ResNet50 avg")
             prediction = "Real" if avg_real > avg_fake else "Fake"
             confidence = max(avg_real, avg_fake)
             prob_real = avg_real
@@ -583,7 +583,7 @@ Respond with ONLY a JSON object:
                 f"Authenticity check: {auth_verdict} (score {auth_score})",
                 f"Print quality forensics score: {forensics_score}",
                 f"ResNet50: {real_count}/{downloaded} reference images classified as Real ({avg_real:.1f}% avg)",
-                f"Final verdict by Claude AI: {prediction} at {confidence:.1f}% confidence",
+                f"Final verdict by AI: {prediction} at {confidence:.1f}% confidence",
             ],
             "risk_level": "low" if prediction == "Real" and confidence > 70 else ("medium" if confidence > 50 else "high"),
         }

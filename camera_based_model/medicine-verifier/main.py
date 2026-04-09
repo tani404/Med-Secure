@@ -4,9 +4,9 @@ Medicine Verification System — Entry Point & Orchestrator.
 
 Pipeline:
     Camera Image -> Preprocessing -> OCR (nemotron-ocr-v1, multi-rotation)
-    -> Query Builder (Claude Haiku) -> SerpAPI Image Search
+    -> Query Builder (LLM) -> SerpAPI Image Search
     -> Fetch Reference Images -> CLIP Embeddings -> Cosine Similarity
-    -> Authenticity Check (Claude Haiku) + Forensics (print quality)
+    -> Authenticity Check (LLM) + Forensics (print quality)
     -> Final 4-signal Confidence Score -> Output
 
 Usage:
