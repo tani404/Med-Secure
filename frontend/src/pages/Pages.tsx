@@ -1046,19 +1046,8 @@ export function VerifyPage() {
     }
   };
 
-  /* ── Camera pipeline progress steps ── */
-  const CAMERA_STEPS = [
-    "Preprocessing image...",
-    "Running OCR (reading text from packaging)...",
-    "Identifying medicine name & dosage...",
-    "Searching reference images...",
-    "Comparing with CLIP embeddings...",
-    "Checking authenticity (Claude AI)...",
-    "Analyzing print quality (forensics)...",
-    "Running ResNet50 verification...",
-    "Finalizing results...",
-  ];
-  const [cameraStep, setCameraStep] = useState(0);
+  /* ── Camera pipeline progress ── */
+  const [cameraProgress, setCameraProgress] = useState(0);
 
   /* ── Analyze (camera) → /predict-camera (full pipeline) ── */
   const handleAnalyzeCamera = async () => {
@@ -1066,12 +1055,12 @@ export function VerifyPage() {
     setAiLoading(true);
     setAiError("");
     setAiResult(null);
-    setCameraStep(0);
+    setCameraProgress(0);
 
-    // Animate through steps while waiting
+    // Animate progress from 0 to ~90% while waiting
     const stepInterval = setInterval(() => {
-      setCameraStep((prev) => (prev < CAMERA_STEPS.length - 1 ? prev + 1 : prev));
-    }, 4000);
+      setCameraProgress((prev: number) => (prev < 90 ? prev + 2 : prev));
+    }, 600);
 
     try {
       const formData = new FormData();
@@ -1081,6 +1070,7 @@ export function VerifyPage() {
         const err = await res.json().catch(() => ({ detail: "Server error" }));
         throw new Error(err.detail || `HTTP ${res.status}`);
       }
+      setCameraProgress(100);
       setAiResult(await res.json());
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "Failed to connect to AI service.");
@@ -1212,19 +1202,19 @@ export function VerifyPage() {
             {/* Camera progress indicator */}
             {aiLoading && scanMode === "camera" && (
               <div className="space-y-3 p-4 bg-surface-c-low rounded-xl">
-                <div className="flex items-center gap-3">
-                  <Spinner />
-                  <p className="text-sm font-medium text-on-surface">{CAMERA_STEPS[cameraStep]}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Spinner />
+                    <p className="text-sm font-medium text-on-surface">Analyzing...</p>
+                  </div>
+                  <p className="font-label text-sm font-semibold text-primary">{cameraProgress}%</p>
                 </div>
                 <div className="w-full bg-surface-c-high rounded-full h-1.5">
                   <div
-                    className="bg-primary h-1.5 rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${((cameraStep + 1) / CAMERA_STEPS.length) * 100}%` }}
+                    className="bg-primary h-1.5 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${cameraProgress}%` }}
                   />
                 </div>
-                <p className="font-label text-[10px] text-outline text-right">
-                  Step {cameraStep + 1} of {CAMERA_STEPS.length}
-                </p>
               </div>
             )}
 
