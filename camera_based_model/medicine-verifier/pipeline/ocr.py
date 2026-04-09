@@ -13,7 +13,6 @@ import asyncio
 import base64
 import io
 import json
-import re
 import time
 
 import requests
@@ -30,16 +29,9 @@ from config import (
     BACKOFF_BASE,
 )
 from utils.logger import get_logger
+from utils.text import extract_json as _extract_json
 
 logger = get_logger(__name__)
-
-
-def _extract_json(raw: str) -> str:
-    """Strip optional markdown code fences and return the inner JSON string."""
-    match = re.search(r"```(?:json)?\s*([\s\S]+?)\s*```", raw)
-    if match:
-        return match.group(1)
-    return raw
 
 
 class OcrFailedException(Exception):

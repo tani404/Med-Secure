@@ -31,7 +31,7 @@ from cache.cache_manager import CacheManager
 from pipeline.preprocessor import preprocess
 from pipeline.ocr import run_ocr, OcrFailedException
 from pipeline.query_builder import build_query
-from pipeline.image_search import search_images
+from pipeline.image_search import search_images_async
 from pipeline.clip_embedder import CLIPEmbedder
 from pipeline.similarity import find_best_match, compute_final_score
 from pipeline.authenticity_checker import check_authenticity
@@ -72,10 +72,10 @@ async def _collect_reference_images(
     all_urls: list[str] = []
     seen_urls: set[str] = set()
 
-    # Search primary query
+    # Search primary query (async — does not block event loop)
     logger.info("Searching images for primary query: '%s'", query)
     try:
-        urls = search_images(query, top_k=top_k)
+        urls = await search_images_async(query, top_k=top_k)
         for u in urls:
             if u not in seen_urls:
                 all_urls.append(u)
@@ -89,7 +89,7 @@ async def _collect_reference_images(
             continue
         logger.info("Searching images for alt query: '%s'", alt_q)
         try:
-            urls = search_images(alt_q, top_k=3)
+            urls = await search_images_async(alt_q, top_k=3)
             for u in urls:
                 if u not in seen_urls:
                     all_urls.append(u)
@@ -232,7 +232,7 @@ async def verify_medicine(
 
         # ── Step 9: Authenticity check + Forensics (run in parallel) ───────
         logger.info("Step 9  Running authenticity check + packaging forensics")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         auth_result, forensics_result = await asyncio.gather(
             check_authenticity(ocr_text),
             loop.run_in_executor(None, run_forensics, image),
