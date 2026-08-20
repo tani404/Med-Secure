@@ -1,16 +1,33 @@
-# MedSecure - Medicine Detection API
+# MedSecure Backend
 
-A machine learning API for detecting counterfeit medicines using ResNet50 deep learning model.
+This repository contains the backend service for MedSecure, a medicine authenticity detection system that classifies uploaded medicine images as Real or Fake using a ResNet50-based deep learning model.
 
-## Features
+The API is built with FastAPI and serves both prediction endpoints and supporting metadata for the frontend application. It can be run locally for development or deployed to a cloud platform such as Render.
 
-- **Real-time Predictions**: Upload medicine images to detect if they're Real or Fake
-- **High Accuracy**: 98.44% accuracy on test dataset
-- **FastAPI**: Modern, fast web framework with automatic API documentation
-- **Interactive Docs**: Built-in Swagger UI and ReDoc documentation
-- **Accuracy Testing**: Endpoint to test model performance on full test dataset
+## Overview
+
+MedSecure helps verify whether a medicine package looks authentic by analyzing image quality, packaging characteristics, and model-based visual signals. The backend exposes endpoints for:
+
+- checking service health
+- retrieving model metadata
+- uploading an image for prediction
+- testing model performance
+- serving API documentation
+- integrating with the frontend and camera-based verification flow
+
+## Main Features
+
+- Real-time medicine image classification
+- Support for JPG, JPEG, PNG, BMP, and WEBP uploads
+- High-confidence prediction output with probability values
+- FastAPI-generated API documentation via Swagger and ReDoc
+- CORS support for frontend development
+- Model accuracy testing endpoint
+- Support for camera-based reference verification pipeline
 
 ## Model Performance
+
+The backend reports the following performance metrics for the trained model:
 
 | Metric | Value |
 |--------|-------|
@@ -21,155 +38,167 @@ A machine learning API for detecting counterfeit medicines using ResNet50 deep l
 
 ## API Endpoints
 
-### Status
-- `GET /` - Welcome & API information
-- `GET /health` - Health check
-- `GET /model-info` - Model information and performance metrics
+### Status and metadata
+
+- `GET /api` - Welcome message and endpoint overview
+- `GET /health` - Health check for the service
+- `GET /model-info` - Model configuration and metric details
 
 ### Prediction
-- `POST /predict` - Upload image for prediction
+
+- `POST /predict` - Upload a medicine image for classification
+- `POST /predict-from-url` - Predict from a publicly accessible image URL
+- `POST /predict-camera` - Run the camera pipeline and combine it with the ResNet50 result
 
 ### Testing
-- `GET /test` - Run accuracy test on test dataset
+
+- `GET /test` - Evaluate the model against the test dataset
 
 ### Documentation
-- `GET /docs` - Swagger UI (interactive documentation)
-- `GET /redoc` - ReDoc alternative documentation
 
-## Deployment on Render
+- `GET /docs` - Swagger UI for interactive API testing
+- `GET /redoc` - Alternative API docs interface
 
-### Prerequisites
-- GitHub account
-- Render account (https://render.com)
-- This repository pushed to GitHub
+## Project Structure
 
-### Steps to Deploy
-
-1. **Push to GitHub**
-   ```bash
-   git add .
-   git commit -m "Prepare for Render deployment"
-   git push origin main
-   ```
-
-2. **Connect to Render**
-   - Go to https://render.com
-   - Click "New" → "Web Service"
-   - Connect your GitHub repository
-   - Select the repository
-
-3. **Configure Service**
-   - **Name**: `medsecure-api`
-   - **Root Directory**: Leave blank
-   - **Runtime**: Python 3.10
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `uvicorn api:app --host 0.0.0.0 --port $PORT`
-
-4. **Deploy**
-   - Click "Create Web Service"
-   - Render will automatically build and deploy
-   - Your API will be live at `https://your-service-name.onrender.com`
-
-### Alternative: Using render.yaml
-
-If `render.yaml` is present, Render will use it automatically:
-```bash
-git push origin main
+```text
+ai-mediii/
+├── api.py              # FastAPI backend application
+├── README.md          # Project documentation
+├── requirements.txt   # Python dependencies
+├── render.yaml        # Render deployment configuration
+├── build.sh           # Build script
+├── Procfile           # Process definition for hosting platforms
+├── best_model.pth     # Trained model weights
+├── archive (1)/       # Dataset files used for validation/testing
+└── .gitignore         # Ignored files and directories
 ```
-
-Your service will be deployed with the configuration from `render.yaml`.
 
 ## Local Development
 
-### Setup
+### 1. Create a virtual environment
+
 ```bash
-# Create virtual environment
 python -m venv venv_torch
+```
 
-# Activate (Windows)
+### 2. Activate it
+
+On Windows:
+
+```bash
 venv_torch\Scripts\activate
+```
 
-# Install dependencies
+### 3. Install dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### Run API
+### 4. Run the API
+
 ```bash
 python api.py
 ```
 
-API will be available at `http://localhost:8000`
+The service will be available at:
 
-### Run with image prediction
-```bash
-python MAIN.py
-# Or provide image path
-python MAIN.py "path/to/image.jpg"
+```text
+http://localhost:8000
 ```
 
-### Test Model Accuracy
-```bash
-python MAIN.py test
+You can also open the interactive documentation at:
+
+```text
+http://localhost:8000/docs
 ```
+
+## Running the Model
+
+The project is designed around a deep learning model that expects RGB images of size 224x224. The prediction pipeline automatically preprocesses uploaded images before inference.
 
 ## Usage Examples
 
-### Using cURL
+### Health check
+
 ```bash
-# Health check
-curl https://your-service.onrender.com/health
+curl http://localhost:8000/health
+```
 
-# Get model info
-curl https://your-service.onrender.com/model-info
+### Get model info
 
-# Upload image for prediction
-curl -X POST "https://your-service.onrender.com/predict" \
+```bash
+curl http://localhost:8000/model-info
+```
+
+### Upload an image for prediction
+
+```bash
+curl -X POST "http://localhost:8000/predict" \
   -F "file=@medicine_image.jpg"
-
-# Test accuracy
-curl https://your-service.onrender.com/test
 ```
 
 ### Using Python
+
 ```python
 import requests
 
-# Predict
 with open('medicine.jpg', 'rb') as f:
     response = requests.post(
-        'https://your-service.onrender.com/predict',
+        'http://localhost:8000/predict',
         files={'file': f}
     )
-    print(response.json())
 
-# Test accuracy
-response = requests.get('https://your-service.onrender.com/test')
 print(response.json())
 ```
 
-## Files Structure
+### Run accuracy check
 
+```bash
+curl http://localhost:8000/test
 ```
-MEDSECURE/
-├── api.py              # FastAPI application
-├── MAIN.py             # Standalone prediction script
-├── best_model.pth      # Trained PyTorch model
-├── requirements.txt    # Python dependencies
-├── render.yaml         # Render deployment config
-├── build.sh            # Build script
-├── Procfile            # Heroku/alternative config
-├── .gitignore          # Git ignore rules
-└── README.md           # This file
+
+## Deployment on Render
+
+### Prerequisites
+
+- GitHub account
+- Render account
+- Repository pushed to GitHub
+
+### Steps
+
+1. Push the repository to GitHub.
+2. Log in to Render and create a new web service.
+3. Connect the GitHub repository.
+4. Set the runtime to Python 3.10.
+5. Use the following build command:
+
+```bash
+pip install -r requirements.txt
 ```
+
+6. Use the startup command:
+
+```bash
+uvicorn api:app --host 0.0.0.0 --port $PORT
+```
+
+7. Deploy the service and use the generated Render URL.
+
+### render.yaml support
+
+If `render.yaml` is present, Render can read the deployment settings automatically when the repository is connected.
 
 ## Notes
 
-- The model expects 224x224 RGB images
-- Supported formats: JPG, JPEG, PNG, BMP
-- Model runs on CPU or GPU automatically
-- Predictions include confidence percentage
+- The prediction model expects images in RGB format.
+- Supported upload formats include JPG, JPEG, PNG, BMP, and WEBP.
+- The backend automatically uses CPU if CUDA is unavailable.
+- Predictions include both class probabilities and a confidence value.
+- The API is designed to work with the frontend and camera-based medicine verification workflow.
 
 ## Support
 
-For issues or questions, please check the API documentation at `/docs` endpoint.
-# medsecure_backend
+If you run into issues, you can inspect the interactive API docs at `/docs` or check the health endpoint at `/health`.

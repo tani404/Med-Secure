@@ -1,3 +1,4 @@
+# Standard Python libraries used for file handling, environment setup, and runtime support.
 import os
 import sys
 import subprocess
@@ -17,7 +18,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pathlib import Path
 
-# ── Camera-based model path ────────────────────────────────────────────────
+# The camera-based verification pipeline lives in a sibling project folder.
+# This block adds that folder to the Python path so its modules can be imported dynamically.
 _CAMERA_MODEL_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "..", "camera_based_model", "medicine-verifier"
@@ -26,6 +28,8 @@ if _CAMERA_MODEL_DIR not in sys.path:
     sys.path.insert(0, _CAMERA_MODEL_DIR)
 
 # --- MODEL ARCHITECTURE ---
+# This function builds the custom ResNet50 classifier used for medicine authenticity prediction.
+# The final layer is replaced with a binary classification head for Real vs Fake.
 def create_model():
     """Define the ResNet50 architecture"""
     model = models.resnet50(weights=None)
@@ -42,6 +46,8 @@ def create_model():
     return model
 
 # --- LIFESPAN ---
+# FastAPI startup hook: the model is loaded once when the application starts.
+# If the model file is missing, the app continues and attempts to load it on demand later.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load model on startup."""
@@ -55,6 +61,7 @@ async def lifespan(app: FastAPI):
 
 
 # --- INITIALIZE FASTAPI APP ---
+# This is the main application instance that exposes all prediction and metadata endpoints.
 app = FastAPI(
     title="MedSecure - Medicine Detection API",
     description="Counterfeit Medicine Detection using ResNet50",
@@ -63,6 +70,7 @@ app = FastAPI(
 )
 
 # --- CORS CONFIGURATION ---
+# Allowed origins are configured for local frontend development and browser-based requests.
 _ALLOWED_ORIGINS = os.getenv(
     "CORS_ORIGINS",
     "http://localhost:5173,http://localhost:3000"
@@ -77,15 +85,18 @@ app.add_middleware(
 )
 
 # --- GLOBAL VARIABLES ---
+# These values define where the model and frontend build are located and which device is used for inference.
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(PROJECT_DIR, 'best_model.pth')
 FRONTEND_DIR = os.path.join(os.path.dirname(PROJECT_DIR), 'frontend', 'dist')
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Load model once on startup
+# The model and transform pipeline are cached globally so they are loaded only once.
 MODEL = None
 TRANSFORM = None
 
+# This helper initializes the PyTorch model and the image preprocessing pipeline.
+# It keeps the loaded weights and transform object in memory for reuse across requests.
 def load_model():
     """Load model and transforms"""
     global MODEL, TRANSFORM
@@ -110,6 +121,7 @@ def load_model():
     return MODEL, TRANSFORM
 
 # --- ENDPOINTS ---
+# API routes are grouped by purpose to keep the backend readable and easier to document.
 
 @app.get("/api", tags=["Status"])
 async def api_root():
@@ -151,6 +163,8 @@ async def model_info():
         "device": str(DEVICE)
     }
 
+# This helper converts raw model probabilities into a human-friendly explanation.
+# It gives the frontend a consistent summary of why a sample was labeled as Real or Fake.
 def generate_analysis(prediction: str, confidence: float, prob_fake: float, prob_real: float):
     """Generate detailed analysis describing why the medicine is classified as real or fake."""
     reasons = []
@@ -204,6 +218,7 @@ def generate_analysis(prediction: str, confidence: float, prob_fake: float, prob
     }
 
 
+# The main prediction route accepts an uploaded image and returns both the label and probability details.
 @app.post("/predict", tags=["Prediction"])
 async def predict(file: UploadFile = File(...)):
     """
@@ -268,10 +283,12 @@ async def predict(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
 
+# Request model for URL-based prediction input.
 class PredictUrlRequest(BaseModel):
     url: str
 
 
+# This endpoint is useful when the frontend has an image URL instead of a raw upload.
 @app.post("/predict-from-url", tags=["Prediction"])
 async def predict_from_url(body: PredictUrlRequest):
     """
@@ -333,6 +350,7 @@ async def predict_from_url(body: PredictUrlRequest):
         raise HTTPException(status_code=500, detail=f"Error processing image from URL: {str(e)}")
 
 
+# This route performs the full camera-based forensic workflow before combining the result with the standard model score.
 @app.post("/predict-camera", tags=["Prediction"])
 async def predict_camera(file: UploadFile = File(...)):
     """
@@ -620,6 +638,7 @@ Respond with ONLY a JSON object:
         raise HTTPException(status_code=500, detail=f"Camera scan failed: {str(e)}")
 
 
+# This endpoint runs the evaluation loop against the repository's test data and returns key classification metrics.
 @app.get("/test", tags=["Testing"])
 async def test_accuracy():
     """
@@ -733,6 +752,7 @@ async def test_accuracy():
 # --- SERVE FRONTEND ---
 # Mount the built React app (frontend/dist) as static files.
 # This must come AFTER all API routes so /predict, /health, etc. take priority.
+# If the frontend bundle exists, the API also serves the UI for single-page navigation.
 if os.path.isdir(FRONTEND_DIR):
     # Serve static assets (JS, CSS, images)
     app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="assets")
@@ -748,6 +768,8 @@ if os.path.isdir(FRONTEND_DIR):
         return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 # --- RUN APPLICATION ---
+# This block is only used when the file is started directly with Python.
+# It can optionally build the frontend before running the server.
 if __name__ == '__main__':
     import uvicorn
 
